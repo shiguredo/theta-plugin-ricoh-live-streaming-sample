@@ -9,6 +9,7 @@ import android.util.Log
 import android.widget.Toast
 import kotlinx.coroutines.experimental.launch
 import org.webrtc.*
+import java.util.*
 
 class MainActivity : Activity() {
     companion object {
@@ -90,6 +91,10 @@ class MainActivity : Activity() {
                 setEnabled(true)
                 addSink(localView)
             }
+
+            val surfaceTextureHelper =
+                    SurfaceTextureHelper.create("CaptureThread", eglBase!!.eglBaseContext);
+            capturer!!.initialize(surfaceTextureHelper, this@MainActivity, videoSource.capturerObserver);
 
             Log.d(TAG, "set up local stream")
             val stream = peer!!.createLocalMediaStream().apply {

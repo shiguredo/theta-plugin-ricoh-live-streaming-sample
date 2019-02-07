@@ -2,7 +2,7 @@
 
 buildscript {
     ext.kotlin_version = '1.2.61'
-    ext.libwebrtc_version = '1.0.24064'
+    ext.libwebrtc_version = '1.0.26405'
     repositories {
         google()
         jcenter()
