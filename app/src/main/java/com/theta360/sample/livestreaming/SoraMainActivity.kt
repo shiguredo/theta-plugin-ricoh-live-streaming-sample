@@ -26,7 +26,7 @@ class SoraMainActivity : Activity() {
     // Capture parameters
     private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
     private val frameRate = 30
-    private val maintainsResolution = false
+    private val maintainsResolution = true
 
     // signaling parameters for video
     private val bitRate = 2000
@@ -42,6 +42,7 @@ class SoraMainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         SoraLogger.enabled = true
+        SoraLogger.libjingle_enabled = true
 
         setContentView(R.layout.activity_main)
         localView = findViewById(R.id.local_view)
@@ -119,6 +120,7 @@ class SoraMainActivity : Activity() {
             enableVideoUpstream(capturer!!, eglBase!!.eglBaseContext)
             videoCodec = codec
             videoBitrate = bitRate
+            enableCpuOveruseDetection = false
         }
 
         channel = SoraMediaChannel(
