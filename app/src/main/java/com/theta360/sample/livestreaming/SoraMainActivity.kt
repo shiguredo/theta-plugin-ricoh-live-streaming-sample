@@ -24,13 +24,13 @@ class SoraMainActivity : Activity() {
     }
 
     // Capture parameters
-    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_1920
-    private val frameRate = 10
+    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
+    private val frameRate = 30
     private val maintainsResolution = false
 
     // signaling parameters for video
     private val bitRate = 2000
-    private val codec = SoraVideoOption.Codec.VP9
+    private val codec = SoraVideoOption.Codec.VP8
 
     private var localView: SurfaceViewRenderer? = null
     private var capturer: ThetaCapturer? = null
