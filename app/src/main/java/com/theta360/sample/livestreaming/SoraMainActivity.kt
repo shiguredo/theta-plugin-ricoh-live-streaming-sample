@@ -23,9 +23,16 @@ class SoraMainActivity : Activity() {
         private val TAG = SoraMainActivity::class.simpleName
     }
 
+    // Capture parameters
     private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_1920
-    private var localView: SurfaceViewRenderer? = null
+    private val frameRate = 10
+    private val maintainsResolution = false
 
+    // signaling parameters for video
+    private val bitRate = 2000
+    private val codec = SoraVideoOption.Codec.VP9
+
+    private var localView: SurfaceViewRenderer? = null
     private var capturer: ThetaCapturer? = null
     private var eglBase: EglBase? = null
 
@@ -50,8 +57,11 @@ class SoraMainActivity : Activity() {
         // Configures RICOH THETA's microphone and camera. This is not a general Android configuration.
         // see https://api.ricoh/docs/theta-plugin-reference/audio-manager-api/
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
+
+        // recording in monaural
         (getSystemService(AUDIO_SERVICE) as AudioManager)
-                .setParameters("RicUseBFormat=false") // recording in monaural
+                .setParameters("RicUseBFormat=false")
+        // Prepare to use camera
         ThetaCapturer.actionMainCameraClose(applicationContext)
     }
 
@@ -83,33 +93,33 @@ class SoraMainActivity : Activity() {
                     val track = ms.videoTracks[0]
                     track.setEnabled(true)
                     track.addSink(this@SoraMainActivity.localView)
-                    capturer?.startCapture(shootingMode.width, shootingMode.height, 30)
+                    capturer?.startCapture(shootingMode.width, shootingMode.height, gframeRate)
                 }
             }
         }
 
         override fun onPushMessage(mediaChannel: SoraMediaChannel, push: PushMessage) {
-            Log.d(TAG, "onPushMessage: push=${push}")
-            val data = push.data
-            if(data is Map<*, *>) {
-                data.forEach { (key, value) ->
-                    Log.d(TAG, "received push data: $key=$value")
-                }
-            }
+            // Log.d(TAG, "onPushMessage: push=${push}")
+            // val data = push.data
+            // if(data is Map<*, *>) {
+            //     data.forEach { (key, value) ->
+            //         Log.d(TAG, "received push data: $key=$value")
+            //     }
+            // }
         }
     }
 
     private fun startChannel() {
         Log.d(TAG, "startChannel")
 
-        capturer = ThetaCapturer(shootingMode)
+        capturer = ThetaCapturer(shootingMode, maintainsResolution)
         val option = SoraMediaOption().apply {
             enableAudioUpstream()
             audioCodec = SoraAudioOption.Codec.OPUS
 
             enableVideoUpstream(capturer!!, eglBase!!.eglBaseContext)
-            videoCodec = SoraVideoOption.Codec.VP9
-            videoBitrate = 2000
+            videoCodec = codec
+            videoBitrate = bitRate
         }
 
         channel = SoraMediaChannel(

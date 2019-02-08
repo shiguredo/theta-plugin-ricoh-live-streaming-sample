@@ -1,4 +1,5 @@
 // Copyright 2018 Ricoh Company, Ltd. All rights reserved.
+// Copyright 2018 Shiguredo, Inc. All rights reserved.
 
 package com.theta360.sample.livestreaming
 
@@ -12,7 +13,8 @@ import org.webrtc.ThreadUtils
 import org.webrtc.VideoCapturer
 
 class ThetaCapturer(
-        private val shootingMode: ShootingMode
+        private val shootingMode: ShootingMode,
+        private val maintainsResolution : Boolean = false
 ) : VideoCapturer {
     companion object {
         fun actionMainCameraClose(context: Context) {
@@ -71,7 +73,7 @@ class ThetaCapturer(
         camera = null
     }
 
-    override fun isScreencast(): Boolean = false
+    override fun isScreencast(): Boolean = maintainsResolution
 
     enum class ShootingMode(
             val value: String,
