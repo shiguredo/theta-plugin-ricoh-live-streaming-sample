@@ -7,9 +7,9 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.webrtc.*
-import java.util.*
 
 class MainActivity : Activity() {
     companion object {
@@ -35,7 +35,7 @@ class MainActivity : Activity() {
         eglBase = EglBase.create()
         localView!!.init(eglBase!!.eglBaseContext, null)
 
-        launch {
+        GlobalScope.launch {
             start()
         }
     }
@@ -106,7 +106,7 @@ class MainActivity : Activity() {
             Log.d(TAG, "start capture")
             capturer!!.startCapture(0, 0, 30)
 
-            launch {
+            GlobalScope.launch {
                 peer!!.setRemoteDescription(offerSDP)
                 val answerSDP = peer!!.createAnswer(MediaConstraints())
                 peer!!.setLocalDescription(answerSDP)

@@ -6,7 +6,9 @@ import android.content.Context
 import android.util.Log
 import org.webrtc.*
 import java.util.*
-import kotlin.coroutines.experimental.suspendCoroutine
+import kotlin.coroutines.suspendCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class PeerChannel(
         context: Context,
