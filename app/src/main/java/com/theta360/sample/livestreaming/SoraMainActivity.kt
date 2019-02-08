@@ -114,8 +114,8 @@ class SoraMainActivity : Activity() {
 
         capturer = ThetaCapturer(shootingMode, maintainsResolution)
         val option = SoraMediaOption().apply {
-            enableAudioUpstream()
-            audioCodec = SoraAudioOption.Codec.OPUS
+            // enableAudioUpstream()
+            // audioCodec = SoraAudioOption.Codec.OPUS
 
             enableVideoUpstream(capturer!!, eglBase!!.eglBaseContext)
             videoCodec = codec
