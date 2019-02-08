@@ -21,9 +21,13 @@ android {
             targetCompatibility JavaVersion.VERSION_1_8
         }
 
+        // For RICOH Signaling
         buildConfigField("String", "CLIENT_ID", "\"${client_id}\"")
         buildConfigField("String", "CLIENT_SECRET", "\"${client_secret}\"")
         buildConfigField("String", "ROOM_ID", "\"${room_id}\"")
+        // For Sora Signalin
+        buildConfigField("String", "SIGNALING_ENDPOINT", "\"${signaling_endpoint}\"")
+        buildConfigField("String", "CHANNEL_ID", "\"${channel_id}\"")
     }
     buildTypes {
         release {

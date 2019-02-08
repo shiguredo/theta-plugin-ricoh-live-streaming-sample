@@ -6,10 +6,16 @@ import android.app.Activity
 import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import org.webrtc.*
+import jp.shiguredo.sora.sdk.channel.SoraMediaChannel
+import jp.shiguredo.sora.sdk.channel.option.SoraAudioOption
+import jp.shiguredo.sora.sdk.channel.option.SoraMediaOption
+import jp.shiguredo.sora.sdk.channel.option.SoraVideoOption
+import jp.shiguredo.sora.sdk.channel.signaling.message.PushMessage
+import jp.shiguredo.sora.sdk.error.SoraErrorReason
+import jp.shiguredo.sora.sdk.util.SoraLogger
+import org.webrtc.EglBase
+import org.webrtc.MediaStream
+import org.webrtc.SurfaceViewRenderer
 
 class SoraMainActivity : Activity() {
     companion object {
@@ -19,15 +25,17 @@ class SoraMainActivity : Activity() {
 
     private var localView: SurfaceViewRenderer? = null
 
-    private var signaling: SignalingChannel? = null
-    private var peer: PeerChannel? = null
     private var capturer: ThetaCapturer? = null
     private var eglBase: EglBase? = null
 
     private var ticket: Ticket? = null
 
+    private var channel: SoraMediaChannel? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        SoraLogger.enabled = true
 
         setContentView(R.layout.activity_main)
         localView = findViewById(R.id.local_view)
@@ -35,105 +43,95 @@ class SoraMainActivity : Activity() {
         eglBase = EglBase.create()
         localView!!.init(eglBase!!.eglBaseContext, null)
 
-        GlobalScope.launch {
-            start()
-        }
+        setupThetaDevices()
+        startChannel()
     }
 
-    private fun start() {
-        val accessToken = AuthClient().getToken(BuildConfig.CLIENT_ID, BuildConfig.CLIENT_SECRET)
-        ticket = RoomClient(accessToken).createTicket(BuildConfig.ROOM_ID)
-        signaling = SignalingChannel(ticket!!.url, SignalingChannelListener())
-        signaling!!.open()
+    private fun setupThetaDevices() {
+        // Configures RICOH THETA's microphone and camera. This is not a general Android configuration.
+        // see https://api.ricoh/docs/theta-plugin-reference/audio-manager-api/
+        // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
+        (getSystemService(AUDIO_SERVICE) as AudioManager)
+                .setParameters("RicUseBFormat=false") // recording in monaural
+        ThetaCapturer.actionMainCameraClose(applicationContext)
     }
 
-    private inner class SignalingChannelListener : SignalingChannel.Listener {
-        override fun onOpen() {
-            Log.d(TAG, "SignalingChannel.Listener#onOpen()")
+    private val channelListener = object : SoraMediaChannel.Listener {
 
-            signaling!!.sendConnect(
-                    SignalingChannel.Role.UPSTREAM,
-                    BuildConfig.ROOM_ID,
-                    ticket!!.accessToken,
-                    SignalingChannel.VideoCodec.VP9,
-                    2000,
-                    SignalingChannel.AudioCodec.OPUS
-            )
+        override fun onConnect(mediaChannel: SoraMediaChannel) {
+            Log.d(TAG, "onConnect")
         }
 
-        override fun onOffer(offerSDP: SessionDescription, config: PeerConnection.RTCConfiguration) {
-            Log.d(TAG, "SignalingChannel.Listener#onOffer(offerSDP=$offerSDP, config=$config)")
+        override fun onClose(mediaChannel: SoraMediaChannel) {
+            Log.d(TAG, "onClose")
+            close()
+        }
 
-            // Configures RICOH THETA's microphone and camera. This is not a general Android configuration.
-            // see https://api.ricoh/docs/theta-plugin-reference/audio-manager-api/
-            // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
-            (getSystemService(AUDIO_SERVICE) as AudioManager)
-                    .setParameters("RicUseBFormat=false") // recording in monaural
-            ThetaCapturer.actionMainCameraClose(applicationContext)
+        override fun onError(mediaChannel: SoraMediaChannel, reason: SoraErrorReason) {
+            Log.e(TAG, "onError: ${reason}")
+            close()
+        }
 
-            Log.d(TAG, "create peer connection")
-            peer = PeerChannel(
-                    applicationContext,
-                    config,
-                    PeerConnectionObserver(),
-                    eglBase!!.eglBaseContext
-            )
+        override fun onAddRemoteStream(mediaChannel: SoraMediaChannel, ms: MediaStream) {
+            Log.d(TAG, "onAddRemoteStream")
+            // nop
+        }
 
-            Log.d(TAG, "set up audio capturer, source, track")
-            val audioConstraints = MediaConstraints()
-            val audioSource = peer!!.createAudioSource(audioConstraints)
-            val audioTrack = peer!!.createAudioTrack(audioSource)
-
-            Log.d(TAG, "set up video capturer, source, track")
-            capturer = ThetaCapturer(SHOOTING_MODE)
-            val videoSource = peer!!.createVideoSource(capturer!!)
-            val videoTrack = peer!!.createVideoTrack(videoSource).apply {
-                setEnabled(true)
-                addSink(localView)
-            }
-
-            val surfaceTextureHelper =
-                    SurfaceTextureHelper.create("CaptureThread", eglBase!!.eglBaseContext);
-            capturer!!.initialize(surfaceTextureHelper, this@SoraMainActivity, videoSource.capturerObserver);
-
-            Log.d(TAG, "set up local stream")
-            val stream = peer!!.createLocalMediaStream().apply {
-                addTrack(audioTrack)
-                addTrack(videoTrack)
-            }
-            peer!!.addStream(stream)
-
-            Log.d(TAG, "start capture")
-            capturer!!.startCapture(0, 0, 30)
-
-            GlobalScope.launch {
-                peer!!.setRemoteDescription(offerSDP)
-                val answerSDP = peer!!.createAnswer(MediaConstraints())
-                peer!!.setLocalDescription(answerSDP)
-                signaling!!.sendAnswer(answerSDP)
+        override fun onAddLocalStream(mediaChannel: SoraMediaChannel, ms: MediaStream) {
+            Log.d(TAG, "onAddLocalStream")
+            runOnUiThread {
+                if (ms.videoTracks.size > 0) {
+                    val track = ms.videoTracks[0]
+                    track.setEnabled(true)
+                    track.addSink(this@SoraMainActivity.localView)
+                    capturer?.startCapture(SHOOTING_MODE.width, SHOOTING_MODE.height, 30)
+                }
             }
         }
 
-        override fun onClosed(code: Int, reason: String?) {
-            Log.d(TAG, "SignalingChannel.Listener#onClosed(code=$code, reason=$reason)")
-
-            Toast.makeText(applicationContext, "signaling channel is closed (code=$code, reason=$reason)", Toast.LENGTH_SHORT).show()
-
-            capturer?.stopCapture()
-
-            // Configures RICOH THETA's camera. This is not a general Android configuration.
-            // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
-            ThetaCapturer.actionMainCameraOpen(applicationContext)
-        }
-    }
-
-    private inner class PeerConnectionObserver : LoggingPeerConnectionObserver() {
-        override fun onIceCandidate(candidate: IceCandidate?) {
-            super.onIceCandidate(candidate)
-
-            if (candidate != null) {
-                signaling!!.sendCandidate(candidate.sdp)
+        override fun onPushMessage(mediaChannel: SoraMediaChannel, push: PushMessage) {
+            Log.d(TAG, "onPushMessage: push=${push}")
+            val data = push.data
+            if(data is Map<*, *>) {
+                data.forEach { (key, value) ->
+                    Log.d(TAG, "received push data: $key=$value")
+                }
             }
         }
     }
+
+    private fun startChannel() {
+        Log.d(TAG, "startChannel")
+
+        val option = SoraMediaOption().apply {
+            enableAudioUpstream()
+            audioCodec = SoraAudioOption.Codec.OPUS
+
+            enableVideoUpstream(capturer!!, eglBase!!.eglBaseContext)
+            videoCodec = SoraVideoOption.Codec.VP9
+            videoBitrate = 2000
+        }
+
+        channel = SoraMediaChannel(
+                context           = this,
+                signalingEndpoint = BuildConfig.SIGNALING_ENDPOINT,
+                channelId         = BuildConfig.CHANNEL_ID,
+                mediaOption       = option,
+                listener          = channelListener)
+        channel!!.connect()
+    }
+
+    private fun close() {
+        channel?.disconnect()
+        channel = null
+
+        capturer?.stopCapture()
+        capturer = null
+
+        localView?.release()
+
+        eglBase?.release()
+        eglBase = null
+    }
+
 }
