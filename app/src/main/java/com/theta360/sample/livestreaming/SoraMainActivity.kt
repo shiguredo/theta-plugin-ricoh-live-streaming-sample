@@ -47,7 +47,7 @@ class SoraMainActivity : Activity() {
         localView = findViewById(R.id.local_view)
 
         eglBase = EglBase.create()
-        localView!!.init(eglBase!!.eglBaseContext, null)
+        // localView!!.init(eglBase!!.eglBaseContext, null)
 
         setupThetaDevices()
         startChannel()
@@ -90,11 +90,10 @@ class SoraMainActivity : Activity() {
             Log.d(TAG, "onAddLocalStream")
             runOnUiThread {
                 if (ms.videoTracks.size > 0) {
-                    val track = ms.videoTracks[0]
-                    track.setEnabled(true)
-                    track.addSink(this@SoraMainActivity.localView)
-                    capturer?.startCapture(shootingMode.width, shootingMode.height, frameRate)
+                    // val track = ms.videoTracks[0]
+                    // track.addSink(this@SoraMainActivity.localView)
                 }
+                capturer?.startCapture(shootingMode.width, shootingMode.height, frameRate)
             }
         }
 
