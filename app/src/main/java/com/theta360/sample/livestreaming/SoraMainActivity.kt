@@ -20,15 +20,13 @@ import org.webrtc.SurfaceViewRenderer
 class SoraMainActivity : Activity() {
     companion object {
         private val TAG = SoraMainActivity::class.simpleName
-        private val SHOOTING_MODE = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_1920
     }
 
+    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_1920
     private var localView: SurfaceViewRenderer? = null
 
     private var capturer: ThetaCapturer? = null
     private var eglBase: EglBase? = null
-
-    private var ticket: Ticket? = null
 
     private var channel: SoraMediaChannel? = null
 
@@ -84,7 +82,7 @@ class SoraMainActivity : Activity() {
                     val track = ms.videoTracks[0]
                     track.setEnabled(true)
                     track.addSink(this@SoraMainActivity.localView)
-                    capturer?.startCapture(SHOOTING_MODE.width, SHOOTING_MODE.height, 30)
+                    capturer?.startCapture(shootingMode.width, shootingMode.height, 30)
                 }
             }
         }
@@ -103,6 +101,7 @@ class SoraMainActivity : Activity() {
     private fun startChannel() {
         Log.d(TAG, "startChannel")
 
+        capturer = ThetaCapturer(shootingMode)
         val option = SoraMediaOption().apply {
             enableAudioUpstream()
             audioCodec = SoraAudioOption.Codec.OPUS
