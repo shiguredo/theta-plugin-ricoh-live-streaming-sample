@@ -7,7 +7,8 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.webrtc.*
 
 class MainActivity : Activity() {
@@ -34,7 +35,7 @@ class MainActivity : Activity() {
         eglBase = EglBase.create()
         localView!!.init(eglBase!!.eglBaseContext, null)
 
-        launch {
+        GlobalScope.launch {
             start()
         }
     }
@@ -91,6 +92,10 @@ class MainActivity : Activity() {
                 addSink(localView)
             }
 
+            val surfaceTextureHelper =
+                    SurfaceTextureHelper.create("CaptureThread", eglBase!!.eglBaseContext);
+            capturer!!.initialize(surfaceTextureHelper, this@MainActivity, videoSource.capturerObserver);
+
             Log.d(TAG, "set up local stream")
             val stream = peer!!.createLocalMediaStream().apply {
                 addTrack(audioTrack)
@@ -101,7 +106,7 @@ class MainActivity : Activity() {
             Log.d(TAG, "start capture")
             capturer!!.startCapture(0, 0, 30)
 
-            launch {
+            GlobalScope.launch {
                 peer!!.setRemoteDescription(offerSDP)
                 val answerSDP = peer!!.createAnswer(MediaConstraints())
                 peer!!.setLocalDescription(answerSDP)

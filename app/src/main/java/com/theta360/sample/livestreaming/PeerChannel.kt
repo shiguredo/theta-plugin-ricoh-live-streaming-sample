@@ -6,7 +6,9 @@ import android.content.Context
 import android.util.Log
 import org.webrtc.*
 import java.util.*
-import kotlin.coroutines.experimental.suspendCoroutine
+import kotlin.coroutines.suspendCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class PeerChannel(
         context: Context,
@@ -23,7 +25,6 @@ class PeerChannel(
         Log.d(tag, "start to initialize peer connection factory")
         val initOptions = PeerConnectionFactory.InitializationOptions
                 .builder(context)
-                .setEnableVideoHwAcceleration(true)
                 .setEnableInternalTracer(true)
                 .createInitializationOptions()
         PeerConnectionFactory.initialize(initOptions)
@@ -31,13 +32,25 @@ class PeerChannel(
 
         Log.d(tag, "start to create peer connection factory")
         val options = PeerConnectionFactory.Options()
-        factory = PeerConnectionFactory.builder()
+        val factoryBuilder = PeerConnectionFactory.builder()
                 .setOptions(options)
-                .createPeerConnectionFactory()
-        Log.d(tag, "finish to create peer connection factory")
 
-        Log.d(tag, "set video hardware acceleration options")
-        factory.setVideoHwAccelerationOptions(localEglContext, null)
+        val encoderFactory = DefaultVideoEncoderFactory(
+                localEglContext,
+                true /* enableIntelVp8Encoder */,
+                false /* enableH264HighProfile */)
+        val decoderFactory = SoftwareVideoDecoderFactory()
+//        decoderFactory.supportedCodecs.forEach {
+//            SoraLogger.d(TAG, "decoderFactory supported codec: ${it.name} ${it.params}")
+//        }
+//        encoderFactory.supportedCodecs.forEach {
+//            SoraLogger.d(TAG, "encoderFactory supported codec: ${it.name} ${it.params}")
+//        }
+        factoryBuilder.setVideoEncoderFactory(encoderFactory)
+                .setVideoDecoderFactory(decoderFactory)
+
+        factory = factoryBuilder.createPeerConnectionFactory()
+        Log.d(tag, "finish to create peer connection factory")
 
         Log.d(tag, "start to create peer connection")
         conn = factory.createPeerConnection(config, observer)!!
@@ -64,7 +77,7 @@ class PeerChannel(
     }
 
     fun createVideoSource(capturer: VideoCapturer): VideoSource {
-        return factory.createVideoSource(capturer)
+        return factory.createVideoSource(capturer.isScreencast)
     }
 
     fun addStream(stream: MediaStream) {
