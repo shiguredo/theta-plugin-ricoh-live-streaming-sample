@@ -93,7 +93,7 @@ class SoraMainActivity : Activity() {
                     val track = ms.videoTracks[0]
                     track.setEnabled(true)
                     track.addSink(this@SoraMainActivity.localView)
-                    capturer?.startCapture(shootingMode.width, shootingMode.height, gframeRate)
+                    capturer?.startCapture(shootingMode.width, shootingMode.height, frameRate)
                 }
             }
         }
