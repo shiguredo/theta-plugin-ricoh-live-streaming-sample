@@ -1,4 +1,5 @@
 // Copyright 2018 Ricoh Company, Ltd. All rights reserved.
+// Copyright 2018 Shiguredo, Inc. All rights reserved.
 
 package com.theta360.sample.livestreaming
 
