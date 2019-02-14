@@ -6,6 +6,7 @@ package com.theta360.sample.livestreaming
 import android.content.Context
 import android.content.Intent
 import android.hardware.Camera
+import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.CapturerObserver
 
 import org.webrtc.SurfaceTextureHelper
@@ -44,9 +45,27 @@ class ThetaCapturer(
                 .setDefaultBufferSize(shootingMode.width, shootingMode.height)
         surfaceTextureHelper!!.setTextureSize(shootingMode.width, shootingMode.height)
         camera!!.setPreviewTexture(surfaceTextureHelper!!.surfaceTexture)
-
+        // val supportedPreviewFrameRates = camera!!.parameters.getSupportedPreviewFrameRates()
+        // SoraLogger.d("ThetaCapturer", "supported fps: ${supportedPreviewFrameRates}")
         val params = camera!!.parameters.apply {
             set("RIC_SHOOTING_MODE", shootingMode.value)
+
+            set("RIC_PROC_STITCHING", "RicNonStitching")
+            // set("RIC_PROC_STITCHING", "RicStaticStitching")
+            // set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto")
+            // set("RIC_PROC_STITCHING", "RicDynamicStitchingSave")
+            // set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad")
+
+            // set("RIC_EXPOSURE_MODE", "RicManualExposure")
+            // set("RIC_EXPOSURE_MODE", "RicAutoExposureP")
+
+            // set("RIC_WB_MODE", "RicWbManualGain")
+            // set("RIC_MANUAL_EXPOSURE_ISO_FRONT", -1)
+            // set("RIC_MANUAL_EXPOSURE_ISO_REAR", -1)
+
+            // set("RIC_EXPOSURE_MODE", "RicAutoExposureT")
+            // set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0)
+            // set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0)
             previewFrameRate = framerate
         }
         camera!!.parameters = params
