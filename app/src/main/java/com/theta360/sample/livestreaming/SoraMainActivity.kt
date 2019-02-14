@@ -29,8 +29,8 @@ class SoraMainActivity : Activity() {
     private val maintainsResolution = true
 
     // signaling parameters for video
-    private val bitRate = 2000
-    private val codec = SoraVideoOption.Codec.VP8
+    private val bitRate = 10000
+    private val codec = SoraVideoOption.Codec.H264
 
     private var localView: SurfaceViewRenderer? = null
     private var capturer: ThetaCapturer? = null

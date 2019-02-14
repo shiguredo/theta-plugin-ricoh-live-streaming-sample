@@ -67,6 +67,9 @@ class ThetaCapturer(
             // set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0)
             // set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0)
             previewFrameRate = framerate
+
+            // Do not set, or Die with fatal exception
+            // setRecordingHint(true)
         }
         camera!!.parameters = params
         camera!!.startPreview()
