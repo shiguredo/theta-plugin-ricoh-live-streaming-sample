@@ -13,6 +13,9 @@ package org.webrtc;
 import android.content.Context;
 import android.os.Handler;
 import android.os.SystemClock;
+
+import com.theta360.sample.livestreaming.ThetaCapturer;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -33,6 +36,8 @@ class ThetaCamera1Session implements CameraSession {
 
   private static enum SessionState { RUNNING, STOPPED }
 
+  private ThetaCapturer.ShootingMode shootingMode;
+
   private final Handler cameraThreadHandler;
   private final Events events;
   private final boolean captureToTexture;
@@ -50,10 +55,11 @@ class ThetaCamera1Session implements CameraSession {
 
   // TODO(titovartem) make correct fix during webrtc:9175
   @SuppressWarnings("ByteBufferBackingArray")
-  public static void create(final CreateSessionCallback callback, final Events events,
-      final boolean captureToTexture, final Context applicationContext,
-      final SurfaceTextureHelper surfaceTextureHelper, final int cameraId, final int width,
-      final int height, final int framerate) {
+  public static void create(ThetaCapturer.ShootingMode shootingMode,
+                            final CreateSessionCallback callback, final Events events,
+                            final boolean captureToTexture, final Context applicationContext,
+                            final SurfaceTextureHelper surfaceTextureHelper, final int cameraId, final int width,
+                            final int height, final int frameRate) {
     final long constructionTimeNs = System.nanoTime();
     Logging.d(TAG, "Open camera " + cameraId);
     events.onCameraOpening();
@@ -85,22 +91,23 @@ class ThetaCamera1Session implements CameraSession {
 
     final CaptureFormat captureFormat;
     try {
-      final android.hardware.Camera.Parameters parameters = camera.getParameters();
-      captureFormat = findClosestCaptureFormat(parameters, width, height, framerate);
-      final Size pictureSize = findClosestPictureSize(parameters, width, height);
-      updateCameraParameters(camera, parameters, captureFormat, pictureSize, captureToTexture);
+        final android.hardware.Camera.Parameters parameters = camera.getParameters();
+        CaptureFormat.FramerateRange frameRateRange = new CaptureFormat.FramerateRange(frameRate, frameRate);
+        captureFormat = new CaptureFormat(width, height, frameRateRange);
+        final Size pictureSize = new Size(width, height);
+        updateCameraParameters(camera, parameters, shootingMode, frameRate, captureToTexture, captureFormat);
     } catch (RuntimeException e) {
-      camera.release();
-      callback.onFailure(FailureType.ERROR, e.getMessage());
-      return;
+        camera.release();
+        callback.onFailure(FailureType.ERROR, e.getMessage());
+        return;
     }
 
     if (!captureToTexture) {
-      final int frameSize = captureFormat.frameSize();
-      for (int i = 0; i < NUMBER_OF_CAPTURE_BUFFERS; ++i) {
-        final ByteBuffer buffer = ByteBuffer.allocateDirect(frameSize);
-        camera.addCallbackBuffer(buffer.array());
-      }
+        final int frameSize = captureFormat.frameSize();
+        for (int i = 0; i < NUMBER_OF_CAPTURE_BUFFERS; ++i) {
+            final ByteBuffer buffer = ByteBuffer.allocateDirect(frameSize);
+            camera.addCallbackBuffer(buffer.array());
+       }
     }
 
     // Calculate orientation manually and send it as CVO insted.
@@ -111,24 +118,32 @@ class ThetaCamera1Session implements CameraSession {
   }
 
   private static void updateCameraParameters(android.hardware.Camera camera,
-      android.hardware.Camera.Parameters parameters, CaptureFormat captureFormat, Size pictureSize,
-      boolean captureToTexture) {
-    final List<String> focusModes = parameters.getSupportedFocusModes();
+                                             android.hardware.Camera.Parameters parameters,
+                                             ThetaCapturer.ShootingMode shootingMode,
+                                             int frameRate,
+                                             boolean captureToTexture,
+                                             CaptureFormat captureFormat) {
+      // final List<String> focusModes = parameters.getSupportedFocusModes();
 
-    parameters.setPreviewFpsRange(captureFormat.framerate.min, captureFormat.framerate.max);
-    parameters.setPreviewSize(captureFormat.width, captureFormat.height);
-    parameters.setPictureSize(pictureSize.width, pictureSize.height);
-    if (!captureToTexture) {
-      parameters.setPreviewFormat(captureFormat.imageFormat);
-    }
+      parameters.setPreviewFrameRate(frameRate);
 
-    if (parameters.isVideoStabilizationSupported()) {
-      parameters.setVideoStabilization(true);
-    }
-    if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-      parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-    }
-    camera.setParameters(parameters);
+      parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
+
+      parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+
+      parameters.setPreviewSize(captureFormat.width, captureFormat.height);
+      // parameters.setPictureSize(pictureSize.width, pictureSize.height);
+      if (!captureToTexture) {
+          parameters.setPreviewFormat(captureFormat.imageFormat);
+      }
+
+      if (parameters.isVideoStabilizationSupported()) {
+          parameters.setVideoStabilization(true);
+      }
+      // if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+      //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+      // }
+      camera.setParameters(parameters);
   }
 
   private static CaptureFormat findClosestCaptureFormat(

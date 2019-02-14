@@ -12,13 +12,22 @@ package org.webrtc;
 
 import android.content.Context;
 
+import com.theta360.sample.livestreaming.ThetaCapturer;
+
+import org.jetbrains.annotations.Nullable;
+
 public class ThetaCamera1Capturer extends Camera1Capturer {
-  private final boolean captureToTexture;
+    private final ThetaCapturer.ShootingMode shootingMode;
+    private final boolean captureToTexture;
 
   public ThetaCamera1Capturer(
-          String cameraName, CameraVideoCapturer.CameraEventsHandler eventsHandler, boolean captureToTexture) {
-    super(cameraName, eventsHandler, captureToTexture);
-    this.captureToTexture = captureToTexture;
+          ThetaCapturer.ShootingMode shootingMode,
+          String cameraName,
+          CameraVideoCapturer.CameraEventsHandler eventsHandler,
+          boolean captureToTexture) {
+      super(cameraName, eventsHandler, captureToTexture);
+      this.shootingMode = shootingMode;
+      this.captureToTexture = captureToTexture;
   }
 
   @Override
@@ -26,7 +35,7 @@ public class ThetaCamera1Capturer extends Camera1Capturer {
                                      CameraSession.Events events, Context applicationContext,
                                      SurfaceTextureHelper surfaceTextureHelper, String cameraName, int width, int height,
                                      int frameRate) {
-    ThetaCamera1Session.create(createSessionCallback, events, captureToTexture, applicationContext,
+    ThetaCamera1Session.create(shootingMode, createSessionCallback, events, captureToTexture, applicationContext,
         surfaceTextureHelper, Camera1Enumerator.getCameraIndex(cameraName), width, height,
         frameRate);
   }

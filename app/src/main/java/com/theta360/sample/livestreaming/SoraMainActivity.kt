@@ -8,15 +8,13 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
 import jp.shiguredo.sora.sdk.channel.SoraMediaChannel
-import jp.shiguredo.sora.sdk.channel.option.SoraAudioOption
 import jp.shiguredo.sora.sdk.channel.option.SoraMediaOption
 import jp.shiguredo.sora.sdk.channel.option.SoraVideoOption
 import jp.shiguredo.sora.sdk.channel.signaling.message.PushMessage
 import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
-import org.webrtc.EglBase
-import org.webrtc.MediaStream
-import org.webrtc.SurfaceViewRenderer
+import org.webrtc.*
+
 
 class SoraMainActivity : Activity() {
     companion object {
@@ -33,7 +31,7 @@ class SoraMainActivity : Activity() {
     private val codec = SoraVideoOption.Codec.H264
 
     private var localView: SurfaceViewRenderer? = null
-    private var capturer: ThetaCapturer? = null
+    private var capturer: VideoCapturer? = null
     private var eglBase: EglBase? = null
 
     private var channel: SoraMediaChannel? = null
@@ -112,7 +110,19 @@ class SoraMainActivity : Activity() {
     private fun startChannel() {
         Log.d(TAG, "startChannel")
 
-        capturer = ThetaCapturer(shootingMode, maintainsResolution)
+        // capturer = ThetaCapturer(shootingMode, maintainsResolution)
+
+        val camera1Enumerator = Camera1Enumerator()
+        val deviceNames = camera1Enumerator.deviceNames
+        for (deviceName in deviceNames) {
+            SoraLogger.d(TAG, "camera device name: ${deviceName}")
+        }
+
+        val cameraName = deviceNames[0]
+        capturer = ThetaCamera1Capturer(shootingMode, cameraName,
+                /* CameraEventsHandler */ null,
+                /*captureToTexture*/ true)
+
         val option = SoraMediaOption().apply {
             // enableAudioUpstream()
             // audioCodec = SoraAudioOption.Codec.OPUS
