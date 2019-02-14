@@ -12,12 +12,6 @@ package org.webrtc;
 
 import android.content.Context;
 
-import org.webrtc.Camera1Capturer;
-import org.webrtc.Camera1Enumerator;
-
-import org.webrtc.CameraVideoCapturer;
-import org.webrtc.SurfaceTextureHelper;
-
 public class ThetaCamera1Capturer extends Camera1Capturer {
   private final boolean captureToTexture;
 
@@ -31,9 +25,9 @@ public class ThetaCamera1Capturer extends Camera1Capturer {
   protected void createCameraSession(CameraSession.CreateSessionCallback createSessionCallback,
                                      CameraSession.Events events, Context applicationContext,
                                      SurfaceTextureHelper surfaceTextureHelper, String cameraName, int width, int height,
-                                     int framerate) {
+                                     int frameRate) {
     ThetaCamera1Session.create(createSessionCallback, events, captureToTexture, applicationContext,
         surfaceTextureHelper, Camera1Enumerator.getCameraIndex(cameraName), width, height,
-        framerate);
+        frameRate);
   }
 }
