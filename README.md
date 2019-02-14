@@ -4,6 +4,11 @@ A plug-in sample for RICOH THETA broadcasting 360 degree video via [RICOH Live S
 Based on https://github.com/ricohapi/theta-plugin-ricoh-live-streaming-sample,
 this repositry provides a modified version to connect Shiguredo's WebRTC SFU Sora.
 
+Also, following files are copied from webrtc.org https://webrtc.googlesource.com/src/ and modified.
+
+- ThetaCamera1Capturer
+- ThetaCamera1Session
+
 ## Set up
 
 Download this project using git clone.
