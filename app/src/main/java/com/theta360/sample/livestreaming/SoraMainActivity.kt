@@ -110,18 +110,17 @@ class SoraMainActivity : Activity() {
     private fun startChannel() {
         Log.d(TAG, "startChannel")
 
-        // capturer = ThetaCapturer(shootingMode, maintainsResolution)
-
         val camera1Enumerator = Camera1Enumerator()
         val deviceNames = camera1Enumerator.deviceNames
         for (deviceName in deviceNames) {
             SoraLogger.d(TAG, "camera device name: ${deviceName}")
         }
-
         val cameraName = deviceNames[0]
         capturer = ThetaCamera1Capturer(shootingMode, cameraName,
-                /* CameraEventsHandler */ null,
-                /*captureToTexture*/ true)
+               /* CameraEventsHandler */ null,
+               /*captureToTexture*/ true)
+
+        // capturer = ThetaCapturer(shootingMode, maintainsResolution)
 
         val option = SoraMediaOption().apply {
             // enableAudioUpstream()

@@ -130,6 +130,21 @@ class ThetaCamera1Session implements CameraSession {
       parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
 
       parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+      // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
+      // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
+      // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
+      // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
+
+      // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
+      // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
+
+      // parameters.set("RIC_WB_MODE", "RicWbManualGain");
+      // parameters.set("RIC_MANUAL_EXPOSURE_ISO_FRONT", -1);
+      // parameters.set("RIC_MANUAL_EXPOSURE_ISO_REAR", -1);
+
+      // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
+      // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
+      // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
       parameters.setPreviewSize(captureFormat.width, captureFormat.height);
       // parameters.setPictureSize(pictureSize.width, pictureSize.height);
