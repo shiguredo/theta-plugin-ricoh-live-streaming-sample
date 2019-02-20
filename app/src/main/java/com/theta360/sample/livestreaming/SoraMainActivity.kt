@@ -47,7 +47,10 @@ class SoraMainActivity : Activity() {
 
         eglBase = EglBase.create()
         // localView!!.init(eglBase!!.eglBaseContext, null)
+    }
 
+    override fun onResume() {
+        super.onResume()
         setupThetaDevices()
         startChannel()
     }
@@ -61,6 +64,7 @@ class SoraMainActivity : Activity() {
         (getSystemService(AUDIO_SERVICE) as AudioManager)
                 .setParameters("RicUseBFormat=false")
         // Prepare to use camera
+        SoraLogger.d(TAG, "Broadcast ACTION_MAIN_CAMERA_CLOSE")
         ThetaCapturer.actionMainCameraClose(applicationContext)
     }
 
@@ -157,6 +161,11 @@ class SoraMainActivity : Activity() {
 
         eglBase?.release()
         eglBase = null
+
+        // Configures RICOH THETA's camera. This is not a general Android configuration.
+        // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
+        SoraLogger.d(TAG, "Broadcast ACTION_MAIN_CAMERA_OPEN")
+        ThetaCapturer.actionMainCameraOpen(applicationContext)
     }
 
 }
