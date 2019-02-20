@@ -122,6 +122,10 @@ class SoraMainActivity : Activity() {
 
         // capturer = ThetaCapturer(shootingMode, maintainsResolution)
 
+        val thetaVideoEncoderFactory = ThetaHardwareVideoEncoderFactory(
+                eglBase!!.eglBaseContext,
+                true /* enableIntelVp8Encoder */,
+                false /* enableH264HighProfile */)
         val option = SoraMediaOption().apply {
             // enableAudioUpstream()
             // audioCodec = SoraAudioOption.Codec.OPUS
@@ -130,6 +134,7 @@ class SoraMainActivity : Activity() {
             videoCodec = codec
             videoBitrate = bitRate
             enableCpuOveruseDetection = false
+            videoEncoderFactory = thetaVideoEncoderFactory
         }
 
         channel = SoraMediaChannel(

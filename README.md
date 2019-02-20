@@ -8,6 +8,8 @@ Also, following files are copied from webrtc.org https://webrtc.googlesource.com
 
 - ThetaCamera1Capturer
 - ThetaCamera1Session
+- ThetaHardwareVideoEncoderFactory
+- ThetaHardwareVideoEncoder
 
 ## Set up
 
