@@ -40,6 +40,9 @@ import org.webrtc.ThreadUtils.ThreadChecker;
 class ThetaHardwareVideoEncoder implements VideoEncoder {
   private static final String TAG = "ThetaHardwareVideoEncoder";
 
+  private final boolean verboseEncodeLog = false;
+  private final boolean verboseDeliverLog = false;
+
   // Bitrate modes - should be in sync with OMX_VIDEO_CONTROLRATETYPE defined
   // in OMX_Video.h
   private static final int VIDEO_ControlRateConstant = 2;
@@ -295,6 +298,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     final int frameWidth = videoFrame.getBuffer().getWidth();
     final int frameHeight = videoFrame.getBuffer().getHeight();
     final boolean shouldUseSurfaceMode = canUseSurface() && isTextureBuffer;
+
     if (frameWidth != width || frameHeight != height || shouldUseSurfaceMode != useSurfaceMode) {
       VideoCodecStatus status = resetCodec(frameWidth, frameHeight, shouldUseSurfaceMode);
       if (status != VideoCodecStatus.OK) {
@@ -348,6 +352,11 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
   private VideoCodecStatus encodeTextureBuffer(VideoFrame videoFrame) {
     encodeThreadChecker.checkIsOnValidThread();
+    long start = 0;
+    long mid = 0;
+    if (verboseEncodeLog) {
+      start = System.currentTimeMillis();
+    }
     try {
       // TODO(perkj): glClear() shouldn't be necessary since every pixel is covered anyway,
       // but it's a workaround for bug webrtc:5147.
@@ -356,10 +365,17 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       VideoFrame derotatedFrame =
           new VideoFrame(videoFrame.getBuffer(), 0 /* rotation */, videoFrame.getTimestampNs());
       videoFrameDrawer.drawFrame(derotatedFrame, textureDrawer, null /* additionalRenderMatrix */);
+      if(verboseEncodeLog) {
+        mid = System.currentTimeMillis();
+        Logging.d(TAG, "encodeTextureBuffer: to drawFrame finished = " + (mid - start));
+      }
       textureEglBase.swapBuffers(videoFrame.getTimestampNs());
     } catch (RuntimeException e) {
       Logging.e(TAG, "encodeTexture failed", e);
       return VideoCodecStatus.ERROR;
+    }
+    if(verboseEncodeLog) {
+      Logging.d(TAG, "encodeTextureBuffer: to swapBuffers finished = " + (System.currentTimeMillis() - mid));
     }
     return VideoCodecStatus.OK;
   }
@@ -439,6 +455,9 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
   private VideoCodecStatus resetCodec(int newWidth, int newHeight, boolean newUseSurfaceMode) {
     encodeThreadChecker.checkIsOnValidThread();
+    Logging.d(TAG, "resetCodec: " + newWidth + "x" + newHeight +
+            ", newUseSurfaceMode=" + newUseSurfaceMode);
+
     VideoCodecStatus status = release();
     if (status != VideoCodecStatus.OK) {
       return status;
@@ -486,10 +505,26 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
   // Visible for testing.
   protected void deliverEncodedImage() {
     outputThreadChecker.checkIsOnValidThread();
+    long start = 0;
+    long dequeued = 0;
+    long beforeOnEncodedFrame = 0;
+    long afterOnEncodedFrame = 0;
+
+    if (verboseDeliverLog) {
+      System.currentTimeMillis();
+    }
     try {
       MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+      long bufferInfo = System.currentTimeMillis();
+      if(verboseDeliverLog) Logging.d(TAG, "deliverEncodedImage: start -> bufferInfo = " + (bufferInfo - start));
       int index = codec.dequeueOutputBuffer(info, DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US);
+      if (verboseDeliverLog) {
+        dequeued = System.currentTimeMillis();
+        if(verboseDeliverLog) Logging.d(TAG, "deliverEncodedImage: bufferInfo -> dequeued = " + (dequeued - bufferInfo));
+      }
       if (index < 0) {
+        Logging.d(TAG, "deliverEncodedImage: negative index=" + index +
+                ", end_of_stream=" + (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM));
         return;
       }
 
@@ -498,7 +533,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       codecOutputBuffer.limit(info.offset + info.size);
 
       if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-        Logging.d(TAG, "Config frame generated. Offset: " + info.offset + ". Size: " + info.size);
+        if(verboseDeliverLog) Logging.d(TAG, "Config frame generated. Offset: " + info.offset + ". Size: " + info.size);
         configBuffer = ByteBuffer.allocateDirect(info.size);
         configBuffer.put(codecOutputBuffer);
       } else {
@@ -534,9 +569,24 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
         EncodedImage.Builder builder = outputBuilders.poll();
         builder.setBuffer(frameBuffer).setFrameType(frameType);
         // TODO(mellem):  Set codec-specific info.
+        if(verboseDeliverLog) {
+          beforeOnEncodedFrame = System.currentTimeMillis();
+          Logging.d(TAG, "deliverEncodedImage: dequeued -> beforeOnEncodedFrame = " + (beforeOnEncodedFrame - dequeued));
+
+        }
         callback.onEncodedFrame(builder.createEncodedImage(), new CodecSpecificInfo());
+        if(verboseDeliverLog) {
+          afterOnEncodedFrame = System.currentTimeMillis();
+          Logging.d(TAG, "deliverEncodedImage: beforeOnEncodedFrame -> afterOnEncodedFrame = "
+                  + (afterOnEncodedFrame - beforeOnEncodedFrame));
+        }
       }
       codec.releaseOutputBuffer(index, false);
+      if(verboseDeliverLog) {
+        long afterRelease = System.currentTimeMillis();
+        Logging.d(TAG, "deliverEncodedImage: afterOnEncodedFrame -> afterRelease = "
+                + (afterRelease - afterOnEncodedFrame));
+      }
     } catch (IllegalStateException e) {
       Logging.e(TAG, "deliverOutput failed", e);
     }
