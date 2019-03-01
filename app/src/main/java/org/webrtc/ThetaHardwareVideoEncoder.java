@@ -18,6 +18,7 @@ import android.media.MediaFormat;
 import android.opengl.GLES20;
 import android.os.Bundle;
 
+import android.util.Log;
 import android.view.Surface;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -520,14 +521,14 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       int index = codec.dequeueOutputBuffer(info, DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US);
       if (verboseDeliverLog) {
         dequeued = System.currentTimeMillis();
-        if(verboseDeliverLog) Logging.d(TAG, "deliverEncodedImage: bufferInfo -> dequeued = " + (dequeued - bufferInfo));
+        Logging.d(TAG, "deliverEncodedImage: bufferInfo -> dequeued = " + (dequeued - bufferInfo));
       }
       if (index < 0) {
         Logging.d(TAG, "deliverEncodedImage: negative index=" + index +
                 ", end_of_stream=" + (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM));
         return;
       }
-
+      Logging.d(TAG, "codecOutputBuffers index/length=" + index + "/" + codec.getOutputBuffers().length);
       ByteBuffer codecOutputBuffer = codec.getOutputBuffers()[index];
       codecOutputBuffer.position(info.offset);
       codecOutputBuffer.limit(info.offset + info.size);

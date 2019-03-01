@@ -23,6 +23,7 @@ class SoraMainActivity : Activity() {
 
     // Capture parameters
     private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
+    // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
     private val frameRate = 30
     private val maintainsResolution = true
 
@@ -122,7 +123,8 @@ class SoraMainActivity : Activity() {
         val cameraName = deviceNames[0]
         capturer = ThetaCamera1Capturer(shootingMode, cameraName,
                /* CameraEventsHandler */ null,
-               /*captureToTexture*/ true)
+               /*captureToTexture*/ true,
+                maintainsResolution)
 
         // capturer = ThetaCapturer(shootingMode, maintainsResolution)
 

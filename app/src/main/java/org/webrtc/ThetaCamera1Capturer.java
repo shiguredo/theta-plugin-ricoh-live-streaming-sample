@@ -19,15 +19,18 @@ import org.jetbrains.annotations.Nullable;
 public class ThetaCamera1Capturer extends Camera1Capturer {
     private final ThetaCapturer.ShootingMode shootingMode;
     private final boolean captureToTexture;
+    private final boolean maintainResolution;
 
   public ThetaCamera1Capturer(
           ThetaCapturer.ShootingMode shootingMode,
           String cameraName,
           CameraVideoCapturer.CameraEventsHandler eventsHandler,
-          boolean captureToTexture) {
+          boolean captureToTexture,
+          boolean maintainResolution) {
       super(cameraName, eventsHandler, captureToTexture);
       this.shootingMode = shootingMode;
       this.captureToTexture = captureToTexture;
+      this.maintainResolution = maintainResolution;
   }
 
   @Override
@@ -38,5 +41,10 @@ public class ThetaCamera1Capturer extends Camera1Capturer {
     ThetaCamera1Session.create(shootingMode, createSessionCallback, events, captureToTexture, applicationContext,
         surfaceTextureHelper, Camera1Enumerator.getCameraIndex(cameraName), width, height,
         frameRate);
+  }
+
+  @Override
+  public boolean isScreencast() {
+      return maintainResolution;
   }
 }

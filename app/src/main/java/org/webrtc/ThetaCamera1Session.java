@@ -111,7 +111,7 @@ class ThetaCamera1Session implements CameraSession {
     }
 
     // Calculate orientation manually and send it as CVO insted.
-    camera.setDisplayOrientation(0 /* degrees */);
+    // camera.setDisplayOrientation(0 /* degrees */);
 
     callback.onDone(new ThetaCamera1Session(events, captureToTexture, applicationContext,
         surfaceTextureHelper, cameraId, camera, info, captureFormat, constructionTimeNs));
@@ -128,6 +128,8 @@ class ThetaCamera1Session implements CameraSession {
       parameters.setPreviewFrameRate(frameRate);
 
       parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
+      parameters.set("video-size", shootingMode.getVideoSize());
+      parameters.set("recording-hint", "true");
 
       parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
       // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
@@ -146,7 +148,7 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-      parameters.setPreviewSize(captureFormat.width, captureFormat.height);
+      // parameters.setPreviewSize(captureFormat.width, captureFormat.height);
       // parameters.setPictureSize(pictureSize.width, pictureSize.height);
       if (!captureToTexture) {
           parameters.setPreviewFormat(captureFormat.imageFormat);
@@ -159,6 +161,8 @@ class ThetaCamera1Session implements CameraSession {
       //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
       // }
       camera.setParameters(parameters);
+
+      // camera.unlock();
   }
 
   private static CaptureFormat findClosestCaptureFormat(
