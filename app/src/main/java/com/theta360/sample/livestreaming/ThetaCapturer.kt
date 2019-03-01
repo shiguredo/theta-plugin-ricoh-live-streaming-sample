@@ -111,6 +111,10 @@ class ThetaCapturer(
         RIC_MOVIE_RECORDING_4K_EQUI("RicMovieRecording4kEqui", 3840, 1920, "3840x1920"),
         RIC_MOVIE_RECORDING_4K_DUAL("RicMovieRecording4kDual", 3840, 1920, "3840x1920"),
         RIC_MOVIE_RECORDING_2K_EQUI("RicMovieRecording2kEqui", 1920, 960, "1920x960"),
-        RIC_MOVIE_RECORDING_2K_DUAL("RicMovieRecording2kDual", 1920, 960, "1920x960")
+        RIC_MOVIE_RECORDING_2K_DUAL("RicMovieRecording2kDual", 1920, 960, "1920x960"),
+
+        RIC_STILL_PREVIEW_1920("RicStillPreview1920", 1920, 960, "1920x960"),
+        // Does not exist?
+        // RIC_STILL_PREVIEW_3840("RicStillPreview3840", 3840, 1920, "3840x1920")
     }
 }
