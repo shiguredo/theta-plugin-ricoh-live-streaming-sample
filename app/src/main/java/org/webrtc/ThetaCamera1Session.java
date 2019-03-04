@@ -94,8 +94,9 @@ class ThetaCamera1Session implements CameraSession {
         final android.hardware.Camera.Parameters parameters = camera.getParameters();
         CaptureFormat.FramerateRange frameRateRange = new CaptureFormat.FramerateRange(frameRate, frameRate);
         captureFormat = new CaptureFormat(width, height, frameRateRange);
-        final Size pictureSize = new Size(width, height);
-        updateCameraParameters(camera, parameters, shootingMode, frameRate, captureToTexture, captureFormat);
+        final Size pictureSize = findClosestPictureSize(parameters, width, height);
+        updateCameraParameters(camera, parameters, shootingMode, frameRate, captureToTexture,
+                captureFormat, pictureSize);
     } catch (RuntimeException e) {
         camera.release();
         callback.onFailure(FailureType.ERROR, e.getMessage());
@@ -122,14 +123,22 @@ class ThetaCamera1Session implements CameraSession {
                                              ThetaCapturer.ShootingMode shootingMode,
                                              int frameRate,
                                              boolean captureToTexture,
-                                             CaptureFormat captureFormat) {
+                                             CaptureFormat captureFormat,
+                                             Size pictureSize) {
       // final List<String> focusModes = parameters.getSupportedFocusModes();
 
       parameters.setPreviewFrameRate(frameRate);
+      // This does NOT work.
+      // parameters.setPreviewFpsRange(frameRate, frameRate);
 
       parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
+      // Any effect?
       parameters.set("video-size", shootingMode.getVideoSize());
-      parameters.set("recording-hint", "true");
+
+      // Does this has any effect?
+      // parameters.set("recording-hint", "true");
+      // Does this has any effect, either?
+      // parameters.setRecordingHint(true);
 
       parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
       // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
@@ -148,8 +157,10 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-      // parameters.setPreviewSize(captureFormat.width, captureFormat.height);
-      // parameters.setPictureSize(pictureSize.width, pictureSize.height);
+      parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
+      // No need for this? I guess only preview is used.
+      parameters.setPictureSize(pictureSize.width, pictureSize.height);
+
       if (!captureToTexture) {
           parameters.setPreviewFormat(captureFormat.imageFormat);
       }

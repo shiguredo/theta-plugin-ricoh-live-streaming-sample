@@ -93,7 +93,12 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
   private boolean automaticResizeOn;
 
   // --- Valid and immutable while an encoding session is running.
-  @Nullable private MediaCodecWrapper codec;
+  @Nullable private MediaCodecWrapper codecWrapper;
+
+  // --- Valid and immutable while an encoding session is running.
+  @Nullable private MediaCodec codec;
+  private int outputBuffersSize = 0;
+
   // Thread that delivers encoded frames to the user callback.
   @Nullable private Thread outputThread;
 
@@ -175,7 +180,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     adjustedBitrate = bitrateAdjuster.getAdjustedBitrateBps();
 
     Logging.d(TAG,
-        "initEncode: " + width + " x " + height + ". @ " + settings.startBitrate
+        "initEncode: " + codecName + " " + width + " x " + height + ". @ " + settings.startBitrate
             + "kbps. Fps: " + settings.maxFramerate + " Use surface mode: " + useSurfaceMode);
     return initEncodeInternal();
   }
@@ -186,7 +191,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     lastKeyFrameNs = -1;
 
     try {
-      codec = mediaCodecWrapperFactory.createByCodecName(codecName);
+      codec = MediaCodec.createByCodecName(codecName);
     } catch (IOException | IllegalArgumentException e) {
       Logging.e(TAG, "Cannot create media encoder " + codecName);
       return VideoCodecStatus.FALLBACK_SOFTWARE;
@@ -198,8 +203,11 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       format.setInteger(MediaFormat.KEY_BIT_RATE, adjustedBitrate);
       format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstant);
       format.setInteger(MediaFormat.KEY_COLOR_FORMAT, colorFormat);
-      format.setInteger(MediaFormat.KEY_FRAME_RATE, bitrateAdjuster.getCodecConfigFramerate());
+      // bitrateAdjuster says framerate is 60, too high, yeah?
+      // format.setInteger(MediaFormat.KEY_FRAME_RATE, bitrateAdjuster.getCodecConfigFramerate());
+      format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
       format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, keyFrameIntervalSec);
+      // format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
       if (codecType == VideoCodecType.H264) {
         String profileLevelId = params.get(VideoCodecInfo.H264_FMTP_PROFILE_LEVEL_ID);
         if (profileLevelId == null) {
@@ -217,6 +225,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
         }
       }
       Logging.d(TAG, "Format: " + format);
+
       codec.configure(
           format, null /* surface */, null /* crypto */, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
@@ -524,12 +533,23 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
         Logging.d(TAG, "deliverEncodedImage: bufferInfo -> dequeued = " + (dequeued - bufferInfo));
       }
       if (index < 0) {
-        Logging.d(TAG, "deliverEncodedImage: negative index=" + index +
-                ", end_of_stream=" + (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM));
+        if (index == MediaCodec.INFO_TRY_AGAIN_LATER) {
+          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (INFO_TRY_AGAIN_LATER)");
+        } else if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (INFO_OUTPUT_FORMAT_CHANGED)");
+        } else if (index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (INFO_OUTPUT_BUFFERS_CHANGED)");
+        } else {
+          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (SHOULD NEVER HAPPEN)");
+        }
         return;
       }
-      Logging.d(TAG, "codecOutputBuffers index/length=" + index + "/" + codec.getOutputBuffers().length);
-      ByteBuffer codecOutputBuffer = codec.getOutputBuffers()[index];
+      if(outputBuffersSize == 0) {
+        // outputBuffersSize = codec.getOutputBuffers().length;
+        outputBuffersSize = 4; // hard coded
+      }
+      Logging.d(TAG, "codecOutputBuffers index/length=" + index + "/" + outputBuffersSize);
+      ByteBuffer codecOutputBuffer = codec.getOutputBuffer(index);
       codecOutputBuffer.position(info.offset);
       codecOutputBuffer.limit(info.offset + info.size);
 
