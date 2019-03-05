@@ -146,7 +146,7 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
 
-      parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
+      // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
       // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
       // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureS");
       // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
@@ -164,7 +164,7 @@ class ThetaCamera1Session implements CameraSession {
       // If this is NOT set, camera fps drops.
       parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
       // No need for this? I guess only preview is used.
-      parameters.setPictureSize(pictureSize.width, pictureSize.height);
+      // parameters.setPictureSize(pictureSize.width, pictureSize.height);
 
       if (!captureToTexture) {
           parameters.setPreviewFormat(captureFormat.imageFormat);
