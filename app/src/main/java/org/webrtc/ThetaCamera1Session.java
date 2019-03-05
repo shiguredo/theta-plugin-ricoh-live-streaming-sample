@@ -133,7 +133,7 @@ class ThetaCamera1Session implements CameraSession {
 
       parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
       // Any effect?
-      parameters.set("video-size", shootingMode.getVideoSize());
+      // parameters.set("video-size", shootingMode.getVideoSize());
 
       // Does this has any effect?
       // parameters.set("recording-hint", "true");
@@ -146,10 +146,14 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
 
-      // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
+      parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
       // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
+      // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureS");
+      // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
+      // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureWDR");
 
       // parameters.set("RIC_WB_MODE", "RicWbManualGain");
+      // parameters.set("RIC_WB_TEMPERATURE", 10000);
       // parameters.set("RIC_MANUAL_EXPOSURE_ISO_FRONT", -1);
       // parameters.set("RIC_MANUAL_EXPOSURE_ISO_REAR", -1);
 
@@ -157,6 +161,7 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
+      // If this is NOT set, camera fps drops.
       parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
       // No need for this? I guess only preview is used.
       parameters.setPictureSize(pictureSize.width, pictureSize.height);
