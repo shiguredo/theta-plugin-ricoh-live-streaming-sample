@@ -31,6 +31,8 @@ import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.Nullable;
 import org.webrtc.ThreadUtils.ThreadChecker;
 
+import javax.microedition.khronos.egl.EGL10;
+
 /**
  * Android hardware video encoder.
  *
@@ -46,7 +48,9 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
   // Bitrate modes - should be in sync with OMX_VIDEO_CONTROLRATETYPE defined
   // in OMX_Video.h
-  private static final int VIDEO_ControlRateConstant = 2;
+  private static final int VIDEO_ControlRateConstantBitRate = 2;
+  private static final int VIDEO_ControlRateConstantQuality = 0;
+  private static final int VIDEO_ControlRateVariableBitRate = 1;
   // Key associated with the bitrate control mode value (above). Not present as a MediaFormat
   // constant until API level 21.
   private static final String KEY_BITRATE_MODE = "bitrate-mode";
@@ -185,6 +189,37 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     return initEncodeInternal();
   }
 
+  public static final int[] CONFIG_RECORDABLE_PIXEL_RGB_BUFFER = {
+          EGL10.EGL_RED_SIZE, 8,
+          EGL10.EGL_GREEN_SIZE, 8,
+          EGL10.EGL_BLUE_SIZE, 8,
+          EGL10.EGL_RENDERABLE_TYPE, EglBase.EGL_OPENGL_ES2_BIT,
+          EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
+          EglBase.EGL_RECORDABLE_ANDROID, 1,
+          EGL10.EGL_NONE
+  };
+
+  public static final int[] CONFIG_RECORDABLE_RGBA_BUFFER = {
+          EGL10.EGL_RED_SIZE, 8,
+          EGL10.EGL_GREEN_SIZE, 8,
+          EGL10.EGL_BLUE_SIZE, 8,
+          EGL10.EGL_ALPHA_SIZE, 8,
+          EGL10.EGL_RENDERABLE_TYPE, EglBase.EGL_OPENGL_ES2_BIT,
+          EglBase.EGL_RECORDABLE_ANDROID, 1,
+          EGL10.EGL_NONE
+  };
+
+  public static final int[] CONFIG_RECORDABLE_PIXEL_RGBA_BUFFER = {
+          EGL10.EGL_RED_SIZE, 8,
+          EGL10.EGL_GREEN_SIZE, 8,
+          EGL10.EGL_BLUE_SIZE, 8,
+          EGL10.EGL_ALPHA_SIZE, 8,
+          EGL10.EGL_RENDERABLE_TYPE, EglBase.EGL_OPENGL_ES2_BIT,
+          EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
+          EglBase.EGL_RECORDABLE_ANDROID, 1,
+          EGL10.EGL_NONE
+  };
+
   private VideoCodecStatus initEncodeInternal() {
     encodeThreadChecker.checkIsOnValidThread();
 
@@ -200,14 +235,30 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     final int colorFormat = useSurfaceMode ? surfaceColorFormat : yuvColorFormat;
     try {
       MediaFormat format = MediaFormat.createVideoFormat(codecType.mimeType(), width, height);
+
       format.setInteger(MediaFormat.KEY_BIT_RATE, adjustedBitrate);
-      format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstant);
+      // format.setInteger(MediaFormat.KEY_BIT_RATE, 10000000);
+
+      format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstantBitRate);
+      // format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstantQuality);
+      // format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateVariableBitRate);
+
       format.setInteger(MediaFormat.KEY_COLOR_FORMAT, colorFormat);
+      // This does not work: E/ACodec: [OMX.qcom.video.encoder.avc] does not support color format 19
+      // format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+      //         MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
+      // This does not work: E/ACodec: [OMX.qcom.video.encoder.avc] does not support color format 2134292616
+      // format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+      //         MediaCodecInfo.CodecCapabilities.COLOR_FormatRGBFlexible);
+
       // bitrateAdjuster says framerate is 60, too high, yeah?
       // format.setInteger(MediaFormat.KEY_FRAME_RATE, bitrateAdjuster.getCodecConfigFramerate());
+      // format.setFloat(MediaFormat.KEY_FRAME_RATE, 29.97f);
       format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+
       format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, keyFrameIntervalSec);
-      // format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+      // format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 90);
+
       if (codecType == VideoCodecType.H264) {
         String profileLevelId = params.get(VideoCodecInfo.H264_FMTP_PROFILE_LEVEL_ID);
         if (profileLevelId == null) {
@@ -231,6 +282,8 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
       if (useSurfaceMode) {
         textureEglBase = new EglBase14(sharedContext, EglBase.CONFIG_RECORDABLE);
+        // textureEglBase = new EglBase14(sharedContext, CONFIG_RECORDABLE_PIXEL_RGBA_BUFFER);
+        // textureEglBase = new EglBase14(sharedContext, CONFIG_RECORDABLE_RGBA_BUFFER);
         textureInputSurface = codec.createInputSurface();
         textureEglBase.createSurface(textureInputSurface);
         textureEglBase.makeCurrent();
@@ -548,7 +601,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
         // outputBuffersSize = codec.getOutputBuffers().length;
         outputBuffersSize = 4; // hard coded
       }
-      Logging.d(TAG, "codecOutputBuffers index/length=" + index + "/" + outputBuffersSize);
+      // Logging.d(TAG, "codecOutputBuffers index/length=" + index + "/" + outputBuffersSize);
       ByteBuffer codecOutputBuffer = codec.getOutputBuffer(index);
       codecOutputBuffer.position(info.offset);
       codecOutputBuffer.limit(info.offset + info.size);
