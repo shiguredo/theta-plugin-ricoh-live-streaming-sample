@@ -30,7 +30,7 @@ class SoraMainActivity : Activity() {
     private val maintainsResolution = true
 
     // signaling parameters for video
-    private val bitRate = 10000
+    private val bitRate = 15000
     private val codec = SoraVideoOption.Codec.H264
 
     private var localView: SurfaceViewRenderer? = null

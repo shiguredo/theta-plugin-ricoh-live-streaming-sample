@@ -125,7 +125,11 @@ class ThetaCamera1Session implements CameraSession {
                                              boolean captureToTexture,
                                              CaptureFormat captureFormat,
                                              Size pictureSize) {
-      // final List<String> focusModes = parameters.getSupportedFocusModes();
+      // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
+      // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
+      parameters.set("RIC_SHOOTING_MODE",
+              ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.getValue());
+      camera.setParameters(parameters);
 
       parameters.setPreviewFrameRate(frameRate);
       // This does NOT work.
