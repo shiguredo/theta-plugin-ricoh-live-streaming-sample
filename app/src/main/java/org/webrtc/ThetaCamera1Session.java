@@ -134,7 +134,7 @@ class ThetaCamera1Session implements CameraSession {
       parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
       // Any effect? At least, it seems do no harm.
       // parameters.set("video-size", shootingMode.getVideoSize());
-      parameters.set("video-size", "5376x2688");
+      // parameters.set("video-size", "5376x2688");
       // If recording-hint is set to true, camera become frozen.
       // parameters.set("recording-hint", "false");
       // It seems the same as "recording-hint" above. Do not set this true.
@@ -163,7 +163,9 @@ class ThetaCamera1Session implements CameraSession {
 
       // If this is NOT set, camera fps drops.
       // parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
+      // What are these numbers?
       parameters.setPreviewSize(5376, 2688);
+
       // No need for this? I guess only preview is used.
       // parameters.setPictureSize(pictureSize.width, pictureSize.height);
       // parameters.setPictureSize(5376, 2688);
