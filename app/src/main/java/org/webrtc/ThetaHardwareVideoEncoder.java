@@ -257,6 +257,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
 
       format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, keyFrameIntervalSec);
+      Log.d(TAG, "format: keyframeintevalsec=" + keyFrameIntervalSec );
       // format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 90);
 
       if (codecType == VideoCodecType.H264) {
@@ -430,7 +431,6 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       videoFrameDrawer.drawFrame(derotatedFrame, textureDrawer, null /* additionalRenderMatrix */);
       if(verboseEncodeLog) {
         mid = System.currentTimeMillis();
-        Logging.d(TAG, "encodeTextureBuffer: to drawFrame finished = " + (mid - start));
       }
       textureEglBase.swapBuffers(videoFrame.getTimestampNs());
     } catch (RuntimeException e) {
@@ -438,7 +438,9 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       return VideoCodecStatus.ERROR;
     }
     if(verboseEncodeLog) {
-      Logging.d(TAG, "encodeTextureBuffer: to swapBuffers finished = " + (System.currentTimeMillis() - mid));
+      long finished = System.currentTimeMillis();
+      Logging.d(TAG, String.format("encodeTextureBuffer (%s): start -> drawFrame [%2d] -> swapBuffers -> end [%2d]",
+              Thread.currentThread().getName(), mid - start, finished - mid));
     }
     return VideoCodecStatus.OK;
   }
@@ -569,21 +571,22 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
   protected void deliverEncodedImage() {
     outputThreadChecker.checkIsOnValidThread();
     long start = 0;
+    long bufferInfo = 0;
     long dequeued = 0;
     long beforeOnEncodedFrame = 0;
     long afterOnEncodedFrame = 0;
 
     if (verboseDeliverLog) {
-      System.currentTimeMillis();
+      start = System.currentTimeMillis();
     }
     try {
       MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-      long bufferInfo = System.currentTimeMillis();
-      if(verboseDeliverLog) Logging.d(TAG, "deliverEncodedImage: start -> bufferInfo = " + (bufferInfo - start));
+      if(verboseDeliverLog) {
+        bufferInfo = System.currentTimeMillis();
+      }
       int index = codec.dequeueOutputBuffer(info, DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US);
       if (verboseDeliverLog) {
         dequeued = System.currentTimeMillis();
-        Logging.d(TAG, "deliverEncodedImage: bufferInfo -> dequeued = " + (dequeued - bufferInfo));
       }
       if (index < 0) {
         if (index == MediaCodec.INFO_TRY_AGAIN_LATER) {
@@ -645,21 +648,19 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
         // TODO(mellem):  Set codec-specific info.
         if(verboseDeliverLog) {
           beforeOnEncodedFrame = System.currentTimeMillis();
-          Logging.d(TAG, "deliverEncodedImage: dequeued -> beforeOnEncodedFrame = " + (beforeOnEncodedFrame - dequeued));
-
         }
         callback.onEncodedFrame(builder.createEncodedImage(), new CodecSpecificInfo());
         if(verboseDeliverLog) {
           afterOnEncodedFrame = System.currentTimeMillis();
-          Logging.d(TAG, "deliverEncodedImage: beforeOnEncodedFrame -> afterOnEncodedFrame = "
-                  + (afterOnEncodedFrame - beforeOnEncodedFrame));
         }
       }
       codec.releaseOutputBuffer(index, false);
       if(verboseDeliverLog) {
-        long afterRelease = System.currentTimeMillis();
-        Logging.d(TAG, "deliverEncodedImage: afterOnEncodedFrame -> afterRelease = "
-                + (afterRelease - afterOnEncodedFrame));
+        long finish = System.currentTimeMillis();
+        Logging.d(TAG, String.format("deliverEncodedImage: start -> bufferInfo [%2d] -> dequeued [%2d] -> " +
+                "beforeOnEncodeFrame [%2d] -> afterOnEncodedFrame [%2d] -> finish [%2d]",
+                bufferInfo - start, dequeued - bufferInfo, beforeOnEncodedFrame - dequeued,
+                afterOnEncodedFrame - beforeOnEncodedFrame, finish - afterOnEncodedFrame));
       }
     } catch (IllegalStateException e) {
       Logging.e(TAG, "deliverOutput failed", e);

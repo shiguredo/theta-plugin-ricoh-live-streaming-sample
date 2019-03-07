@@ -11,6 +11,7 @@
 package org.webrtc;
 
 import android.content.Context;
+import android.hardware.Camera;
 import android.os.Handler;
 import android.os.SystemClock;
 
@@ -125,6 +126,13 @@ class ThetaCamera1Session implements CameraSession {
                                              boolean captureToTexture,
                                              CaptureFormat captureFormat,
                                              Size pictureSize) {
+//      for(Camera.Size size : parameters.getSupportedPreviewSizes()) {
+//          Log.d(TAG, "supported preview sizes: " + size.width + "x" + size.height);
+//      }
+//      for(Camera.Size size : parameters.getSupportedVideoSizes()) {
+//          Log.d(TAG, "supported video sizes: " + size.width + "x" + size.height);
+//      }
+
       // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
       // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
       parameters.set("RIC_SHOOTING_MODE",
@@ -165,13 +173,13 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-      // If this is NOT set, camera fps drops.
       // parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
       // What are these numbers?
       parameters.setPreviewSize(5376, 2688);
 
       // No need for this? I guess only preview is used.
-      // parameters.setPictureSize(pictureSize.width, pictureSize.height);
+      // Almost merginal but maybe slightly better FPS when set.
+      parameters.setPictureSize(pictureSize.width, pictureSize.height);
       // parameters.setPictureSize(5376, 2688);
 
       if (!captureToTexture) {
