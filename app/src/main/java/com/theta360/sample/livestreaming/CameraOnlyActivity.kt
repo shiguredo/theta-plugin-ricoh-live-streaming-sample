@@ -109,14 +109,17 @@ class CameraOnlyActivity : Activity() {
         thread.start()
         val handler = Handler(thread.getLooper())
 
-        eglBase!!.createDummyPbufferSurface();
-        eglBase!!.makeCurrent();
+        ThreadUtils.invokeAtFrontUninterruptibly(handler) {
+            eglBase!!.createDummyPbufferSurface();
+            eglBase!!.makeCurrent();
+        }
 
         val oesTextureId = GlUtil.generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
         surfaceTexture = SurfaceTexture(oesTextureId)
         surfaceTexture!!.setOnFrameAvailableListener(
                 {st ->
                     Logging.d(TAG, "Camera image captured.")
+                    st.updateTexImage()
                     Unit
                 },
                 handler)
