@@ -152,8 +152,8 @@ class ThetaCamera1Session implements CameraSession {
       // It seems the same as "recording-hint" above. Do not set this true.
       parameters.setRecordingHint(false);
 
-      parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-      // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
+      // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+      parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
@@ -173,12 +173,12 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-      // parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
+      parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
       // What are these numbers?
-      parameters.setPreviewSize(5376, 2688);
+      // parameters.setPreviewSize(5376, 2688);
 
       // No need for this? I guess only preview is used.
-      // Almost merginal but maybe slightly better FPS when set.
+      // Almost marginal but maybe slightly better FPS when set.
       parameters.setPictureSize(pictureSize.width, pictureSize.height);
       // parameters.setPictureSize(5376, 2688);
 
@@ -327,16 +327,24 @@ class ThetaCamera1Session implements CameraSession {
         firstFrameReported = true;
       }
 
+//      Logging.d(TAG, "texutre frame buffer : " + frame.getBuffer().getWidth() + "x"
+//              + frame.getBuffer().getHeight() + " of " + frame.getBuffer().getClass().getName());
+//      TextureBufferImpl bufferImpl = (TextureBufferImpl) frame.getBuffer();
+//      Logging.d(TAG, "TextureBufferImpl type=" + bufferImpl.getType() + ", unscaled="
+//                      + bufferImpl.getUnscaledWidth() + "x" + bufferImpl.getUnscaledHeight());
+
       // Undo the mirror that the OS "helps" us with.
       // http://developer.android.com/reference/android/hardware/Camera.html#setDisplayOrientation(int)
-      final VideoFrame modifiedFrame = new VideoFrame(
-          CameraSession.createTextureBufferWithModifiedTransformMatrix(
-              (TextureBufferImpl) frame.getBuffer(),
-              /* mirror= */ info.facing == android.hardware.Camera.CameraInfo.CAMERA_FACING_FRONT,
-              /* rotation= */ 0),
-          /* rotation= */ getFrameOrientation(), frame.getTimestampNs());
-      events.onFrameCaptured(ThetaCamera1Session.this, modifiedFrame);
-      modifiedFrame.release();
+//      final VideoFrame modifiedFrame = new VideoFrame(
+//          CameraSession.createTextureBufferWithModifiedTransformMatrix(
+//              (TextureBufferImpl) frame.getBuffer(),
+//              /* mirror= */ info.facing == android.hardware.Camera.CameraInfo.CAMERA_FACING_FRONT,
+//              /* rotation= */ 0),
+//          /* rotation= */ getFrameOrientation(), frame.getTimestampNs());
+//      events.onFrameCaptured(ThetaCamera1Session.this, modifiedFrame);
+//      modifiedFrame.release();
+
+      events.onFrameCaptured(ThetaCamera1Session.this, frame);
     });
   }
 
