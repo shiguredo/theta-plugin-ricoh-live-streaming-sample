@@ -47,7 +47,6 @@ class CameraOnlyActivity : Activity() {
     private val frameRate = 30
 
     private var camera: Camera? = null;
-    private var localView: SurfaceViewRenderer? = null
 
     private var eglBase: EglBase? = null
     private var eglBaseContext: EglBase.Context? = null
@@ -60,13 +59,12 @@ class CameraOnlyActivity : Activity() {
         SoraLogger.enabled = true
         SoraLogger.libjingle_enabled = true
 
-        setContentView(R.layout.activity_main)
-        localView = findViewById(R.id.local_view)
-
+        setContentView(R.layout.activity_empty)
     }
 
     override fun onResume() {
         super.onResume()
+
         eglBase = EglBase.create()
         eglBaseContext = eglBase!!.eglBaseContext
         setupTexture()
@@ -115,14 +113,18 @@ class CameraOnlyActivity : Activity() {
         }
 
         val oesTextureId = GlUtil.generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
+        var lastFrameCaptured = System.currentTimeMillis()
         surfaceTexture = SurfaceTexture(oesTextureId)
         surfaceTexture!!.setOnFrameAvailableListener(
-                {st ->
-                    Logging.d(TAG, "Camera image captured.")
-                    st.updateTexImage()
+                {_ ->
+                    surfaceTexture!!.updateTexImage()
+                    val current = System.currentTimeMillis()
+                    Logging.d(TAG, "Camera image captured. interval=${current - lastFrameCaptured} msec")
+                    lastFrameCaptured = current
                     Unit
                 },
                 handler)
+        surfaceTexture!!.setDefaultBufferSize(shootingMode.width, shootingMode.height)
     }
 
     private fun startCamera() {
@@ -164,7 +166,7 @@ class CameraOnlyActivity : Activity() {
         // If recording-hint is set to true, camera become frozen.
         // parameters.set("recording-hint", "false");
         // It seems the same as "recording-hint" above. Do not set this true.
-        // parameters.setRecordingHint(false)
+        // parameters.setRecordingHint(true)
 
         // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
         // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
