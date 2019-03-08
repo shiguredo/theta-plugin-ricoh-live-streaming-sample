@@ -29,10 +29,7 @@ import android.opengl.GLES11Ext
 import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
 import android.opengl.GLES20
-
-
-
-
+import java.lang.Exception
 
 
 class CameraOnlyActivity : Activity() {
@@ -80,6 +77,9 @@ class CameraOnlyActivity : Activity() {
     override fun onPause() {
         super.onPause()
 
+        camera?.stopPreview()
+        camera?.release()
+        camera = null
         surfaceTexture?.release()
         // Configures RICOH THETA's camera. This is not a general Android configuration.
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
@@ -126,7 +126,22 @@ class CameraOnlyActivity : Activity() {
         Log.d(TAG, "startCamera")
         val cameraId= 0;
 
-        camera = android.hardware.Camera.open(cameraId)
+        for (i in 1..10) {
+            try {
+                camera = android.hardware.Camera.open(cameraId)
+                break
+            } catch (e: Exception) {
+                Logging.d(TAG, "Ignore error in opening camera: $e")
+                Thread.sleep(100)
+            }
+        }
+        if (camera != null) {
+            Log.d(TAG, "Camera opened.")
+        } else {
+            Log.e(TAG, "Camera open failed.")
+            throw RuntimeException()
+        }
+
         val parameters = camera!!.parameters
 
         // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
@@ -135,20 +150,20 @@ class CameraOnlyActivity : Activity() {
                 ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
         camera!!.parameters = parameters
 
-        parameters.previewFrameRate = frameRate
+        // parameters.previewFrameRate = frameRate
         // This does NOT work.
         // parameters.setPreviewFpsRange(frameRate, frameRate);
 
-        parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
+        // parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
         // Any effect? At least, it seems do no harm.
         // parameters.set("video-size", shootingMode.getVideoSize());
         // parameters.set("video-size", "5376x2688");
         // If recording-hint is set to true, camera become frozen.
         // parameters.set("recording-hint", "false");
         // It seems the same as "recording-hint" above. Do not set this true.
-        parameters.setRecordingHint(false)
+        // parameters.setRecordingHint(false)
 
-        parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+        // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
         // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
         // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
         // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
@@ -169,23 +184,23 @@ class CameraOnlyActivity : Activity() {
         // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
         // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-        parameters.setPreviewSize(shootingMode.width, shootingMode.height)
+        // parameters.setPreviewSize(shootingMode.width, shootingMode.height)
         // What are these numbers?
         // parameters.setPreviewSize(5376, 2688);
 
         // No need for this? I guess only preview is used.
         // Almost marginal but maybe slightly better FPS when set.
-        parameters.setPictureSize(shootingMode.width, shootingMode.height)
+        // parameters.setPictureSize(shootingMode.width, shootingMode.height)
         // parameters.setPictureSize(5376, 2688);
 
         if (parameters.isVideoStabilizationSupported) {
-            parameters.videoStabilization = true
+            // parameters.videoStabilization = true
         }
         // if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
         //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         // }
         camera!!.parameters = parameters
-
+        camera!!.setPreviewTexture(surfaceTexture)
         camera!!.startPreview()
     }
 
