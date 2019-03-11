@@ -147,99 +147,107 @@ class CameraOnlyActivity : Activity() {
 
     private fun startCamera() {
         Log.d(TAG, "startCamera")
-        val cameraId= 0;
+        val threadName = "camera-handler-thread"
+        val thread = HandlerThread(threadName)
+        thread.start()
+        val handler = Handler(thread.getLooper())
 
-        for (i in 1..10) {
-            try {
-                camera = android.hardware.Camera.open(cameraId)
-                break
-            } catch (e: Exception) {
-                Logging.d(TAG, "Ignore error in opening camera: $e")
-                Thread.sleep(100)
+        handler.post {
+            val cameraId= 0;
+
+            for (i in 1..10) {
+                try {
+                    camera = android.hardware.Camera.open(cameraId)
+                    break
+                } catch (e: Exception) {
+                    Logging.d(TAG, "Ignore error in opening camera: $e")
+                    Thread.sleep(100)
+                }
             }
+            if (camera != null) {
+                Log.d(TAG, "Camera opened.")
+            } else {
+                Log.e(TAG, "Camera open failed.")
+                throw RuntimeException()
+            }
+
+            val parameters = camera!!.parameters
+
+            // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
+            // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
+            parameters.set("RIC_SHOOTING_MODE",
+                    ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+            camera!!.parameters = parameters
+
+            parameters.previewFrameRate = frameRate
+
+            // parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
+            // parameters.set("face-detection", 0)
+
+            // This does NOT work.
+            // parameters.setPreviewFpsRange(frameRate, frameRate);
+
+            parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
+            // Any effect? At least, it seems do no harm.
+            // parameters.set("video-size", shootingMode.getVideoSize());
+            // parameters.set("video-size", "5376x2688");
+            parameters.set("video-size", "3840x1920")
+
+            parameters.setPreviewSize(3840, 1920)
+            // parameters.setPreviewSize(640, 480)
+            // parameters.setPreviewSize(5376, 2688)
+
+            // If recording-hint is set to true, camera become frozen.
+            parameters.set("recording-hint", "true");
+            // It seems the same as "recording-hint" above. Do not set this true.
+            // parameters.setRecordingHint(true)
+
+            // parameters.set("secure-mode", "disable")
+            // parameters.set("zsl", 1)
+
+
+            // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+            parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
+            // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
+            // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
+            // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
+
+            // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
+            // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
+            // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureS");
+            // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
+            // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureWDR");
+
+            // parameters.set("RIC_WB_MODE", "RicWbManualGain");
+            // parameters.set("RIC_WB_TEMPERATURE", 10000);
+            // parameters.set("RIC_MANUAL_EXPOSURE_ISO_FRONT", -1);
+            // parameters.set("RIC_MANUAL_EXPOSURE_ISO_REAR", -1);
+
+            // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
+            // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
+            // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
+
+            // parameters.setPreviewSize(shootingMode.width, shootingMode.height)
+            // What are these numbers?
+            // parameters.setPreviewSize(5376, 2688);
+
+            // No need for this? I guess only preview is used.
+            // Almost marginal but maybe slightly better FPS when set.
+            // parameters.setPictureSize(shootingMode.width, shootingMode.height)
+            // parameters.setPictureSize(5376, 2688);
+
+            if (parameters.isVideoStabilizationSupported) {
+                // parameters.videoStabilization = true
+            }
+            // if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+            //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+            // }
+
+            camera!!.parameters = parameters
+            camera!!.setPreviewTexture(surfaceTexture)
+            camera!!.startPreview()
+            camera!!.unlock()
         }
-        if (camera != null) {
-            Log.d(TAG, "Camera opened.")
-        } else {
-            Log.e(TAG, "Camera open failed.")
-            throw RuntimeException()
-        }
-
-        val parameters = camera!!.parameters
-
-        // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
-        // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
-        parameters.set("RIC_SHOOTING_MODE",
-                ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
-        camera!!.parameters = parameters
-
-        parameters.previewFrameRate = frameRate
-
-        // parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
-        // parameters.set("face-detection", 0)
-
-        // This does NOT work.
-        // parameters.setPreviewFpsRange(frameRate, frameRate);
-
-        parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
-        // Any effect? At least, it seems do no harm.
-        // parameters.set("video-size", shootingMode.getVideoSize());
-        // parameters.set("video-size", "5376x2688");
-        parameters.set("video-size", "3840x1920")
-
-        parameters.setPreviewSize(3840, 1920)
-        // parameters.setPreviewSize(5376, 2688)
-
-        // If recording-hint is set to true, camera become frozen.
-        // parameters.set("recording-hint", "true");
-        // It seems the same as "recording-hint" above. Do not set this true.
-        // parameters.setRecordingHint(true)
-
-        // parameters.set("secure-mode", "disable")
-        // parameters.set("zsl", 1)
-
-
-        // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-        parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
-        // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
-        // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
-        // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
-
-        // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureS");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureWDR");
-
-        // parameters.set("RIC_WB_MODE", "RicWbManualGain");
-        // parameters.set("RIC_WB_TEMPERATURE", 10000);
-        // parameters.set("RIC_MANUAL_EXPOSURE_ISO_FRONT", -1);
-        // parameters.set("RIC_MANUAL_EXPOSURE_ISO_REAR", -1);
-
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
-        // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
-        // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
-
-        // parameters.setPreviewSize(shootingMode.width, shootingMode.height)
-        // What are these numbers?
-        // parameters.setPreviewSize(5376, 2688);
-
-        // No need for this? I guess only preview is used.
-        // Almost marginal but maybe slightly better FPS when set.
-        // parameters.setPictureSize(shootingMode.width, shootingMode.height)
-        // parameters.setPictureSize(5376, 2688);
-
-        if (parameters.isVideoStabilizationSupported) {
-            // parameters.videoStabilization = true
-        }
-        // if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-        //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-        // }
-
-        camera!!.parameters = parameters
-        camera!!.setPreviewTexture(surfaceTexture)
-        camera!!.startPreview()
-        camera!!.unlock()
     }
 
     private fun generateTexture(target: Int): Int {

@@ -3,7 +3,9 @@
 
 package com.theta360.sample.livestreaming
 
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import android.hardware.Camera
 import android.media.AudioManager
 import android.os.Bundle
@@ -20,6 +22,15 @@ import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
 import android.opengl.GLES20
 import java.lang.Exception
+import android.content.Context.CAMERA_SERVICE
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraDevice
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureRequest
+import android.view.SurfaceView
+import java.util.Arrays.asList
+
+
 
 
 @Suppress("DEPRECATION")
@@ -37,15 +48,20 @@ class CameraOnly2Activity : Activity() {
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_STILL_PREVIEW_1920
     private val frameRate = 30
 
-    private var camera: Camera? = null;
+    private var cameraThread: HandlerThread? = null
+    private val cameraThreadHandler: Handler? = null
 
-    private var eglBase: EglBase? = null
-    private var eglBaseContext: EglBase.Context? = null
+    private var cameraManager: CameraManager? = null
+    private var camera: CameraDevice? = null
+    private var cameraSession: CameraCaptureSession? = null
+    private var cameraRequest: CaptureRequest? = null
 
-    private var surfaceTexture: SurfaceTexture? = null
+    private var surfaceView: SurfaceView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_camera)
+        surfaceView = findViewById(R.id.surfaceView)
 
         SoraLogger.enabled = true
         SoraLogger.libjingle_enabled = true
@@ -56,27 +72,19 @@ class CameraOnly2Activity : Activity() {
     override fun onResume() {
         super.onResume()
 
-        eglBase = EglBase.create()
-        eglBaseContext = eglBase!!.eglBaseContext
-        setupTexture()
         setupThetaDevices()
         startCamera()
     }
 
     override fun onPause() {
-        super.onPause()
-
-        camera?.stopPreview()
-        camera?.release()
-        camera = null
-        surfaceTexture?.release()
         // Configures RICOH THETA's camera. This is not a general Android configuration.
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
         SoraLogger.d(TAG, "Broadcast ACTION_MAIN_CAMERA_OPEN")
         ThetaCapturer.actionMainCameraOpen(applicationContext)
 
-        eglBase?.release()
-        eglBase = null
+        cameraThread?.quit()
+
+        super.onPause()
     }
 
     private fun setupThetaDevices() {
@@ -92,144 +100,52 @@ class CameraOnly2Activity : Activity() {
         ThetaCapturer.actionMainCameraClose(applicationContext)
     }
 
-    private fun setupTexture() {
-        val threadName = "capture-surface-handler-thread"
-        val thread = HandlerThread(threadName)
-        thread.start()
-        val handler = Handler(thread.getLooper())
+    private val cameraStateCallback = object: CameraDevice.StateCallback() {
+        override fun onOpened(cameraDevice: CameraDevice) {
+            Logging.d(TAG, "Camera onOpened: $cameraDevice")
 
-        ThreadUtils.invokeAtFrontUninterruptibly(handler) {
-            eglBase!!.createDummyPbufferSurface();
-            eglBase!!.makeCurrent();
+            camera = cameraDevice
+            val outputs = listOf(surfaceView!!.holder.surface)
+            camera!!.createCaptureSession(outputs, captureSessionCallback,
+                    cameraThreadHandler)
         }
 
-        val oesTextureId = GlUtil.generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
-        var lastFrameCaptured = System.currentTimeMillis()
-        val fpsIntervalFramesTarget = 30
-        var fpsIntervalStart = lastFrameCaptured
-        var fpsIntervalFrames = 0
-        surfaceTexture = SurfaceTexture(oesTextureId)
-        surfaceTexture!!.setOnFrameAvailableListener(
-                {_ ->
-                    surfaceTexture!!.updateTexImage()
-                    val current = System.currentTimeMillis()
-                    Logging.d(TAG, "Camera image captured. interval=${current - lastFrameCaptured} msec")
-                    lastFrameCaptured = current
-                    if (fpsIntervalFrames != fpsIntervalFramesTarget) {
-                        fpsIntervalFrames++
-                    } else {
-                        Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntervalStart)))
-                        fpsIntervalFrames = 0
-                        fpsIntervalStart = current
-                    }
-                    Unit
-                },
-                handler)
-        surfaceTexture!!.setDefaultBufferSize(shootingMode.width, shootingMode.height)
+        override fun onDisconnected(cameraDevice: CameraDevice) {
+            Logging.d(TAG, "Camera onDisconnected: $cameraDevice")
+        }
+
+        override fun onError(cameraDevice: CameraDevice, error: Int) {
+            Logging.d(TAG, "Camera onError: $cameraDevice, error=$error")
+        }
     }
 
+    private val captureSessionCallback = object: CameraCaptureSession.StateCallback() {
+        override fun onConfigureFailed(p0: CameraCaptureSession) {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+
+        override fun onConfigured(p0: CameraCaptureSession) {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+
+    }
+
+    @SuppressLint("MissingPermission")
     private fun startCamera() {
         Log.d(TAG, "startCamera")
-        val cameraId= 0;
 
-        for (i in 1..10) {
-            try {
-                camera = android.hardware.Camera.open(cameraId)
-                break
-            } catch (e: Exception) {
-                Logging.d(TAG, "Ignore error in opening camera: $e")
-                Thread.sleep(100)
-            }
-        }
-        if (camera != null) {
-            Log.d(TAG, "Camera opened.")
-        } else {
-            Log.e(TAG, "Camera open failed.")
-            throw RuntimeException()
-        }
+        val threadName = "camera-handler-thread"
+        cameraThread = HandlerThread(threadName)
+        cameraThread!!.start()
+        val cameraThreadHandler = Handler(cameraThread!!.getLooper())
 
-        val parameters = camera!!.parameters
+        cameraManager = this.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraIdList = cameraManager!!.cameraIdList
 
-        // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
-        // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
-        parameters.set("RIC_SHOOTING_MODE",
-                ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
-        camera!!.parameters = parameters
+        Logging.d(TAG, "cameraIdList = ${cameraIdList.joinToString(separator = ", ")}")
+        val cameraId = cameraIdList[0]
 
-        parameters.previewFrameRate = frameRate
-
-        // parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
-        // parameters.set("face-detection", 0)
-
-        // This does NOT work.
-        // parameters.setPreviewFpsRange(frameRate, frameRate);
-
-        // parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
-        // Any effect? At least, it seems do no harm.
-        // parameters.set("video-size", shootingMode.getVideoSize());
-        // parameters.set("video-size", "5376x2688");
-        // If recording-hint is set to true, camera become frozen.
-        // parameters.set("recording-hint", "true");
-
-        // parameters.set("secure-mode", "disable")
-        // parameters.set("zsl", 1)
-
-        // It seems the same as "recording-hint" above. Do not set this true.
-        // parameters.setRecordingHint(true)
-
-        // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-        parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
-        // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
-        // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
-        // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
-
-        // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureS");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureWDR");
-
-        // parameters.set("RIC_WB_MODE", "RicWbManualGain");
-        // parameters.set("RIC_WB_TEMPERATURE", 10000);
-        // parameters.set("RIC_MANUAL_EXPOSURE_ISO_FRONT", -1);
-        // parameters.set("RIC_MANUAL_EXPOSURE_ISO_REAR", -1);
-
-        // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureT");
-        // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
-        // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
-
-        // parameters.setPreviewSize(shootingMode.width, shootingMode.height)
-        // What are these numbers?
-        // parameters.setPreviewSize(5376, 2688);
-
-        // No need for this? I guess only preview is used.
-        // Almost marginal but maybe slightly better FPS when set.
-        // parameters.setPictureSize(shootingMode.width, shootingMode.height)
-        parameters.setPictureSize(5376, 2688);
-
-        if (parameters.isVideoStabilizationSupported) {
-            // parameters.videoStabilization = true
-        }
-        // if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-        //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-        // }
-
-        camera!!.parameters = parameters
-        camera!!.setPreviewTexture(surfaceTexture)
-        camera!!.startPreview()
-    }
-
-    private fun generateTexture(target: Int): Int {
-        val textureArray = IntArray(1)
-        GLES20.glGenTextures(1, textureArray, 0)
-        val textureId = textureArray[0]
-        GLES20.glBindTexture(target, textureId)
-        GLES20.glTexParameterf(target, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR.toFloat())
-        GLES20.glTexParameterf(target, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
-        GLES20.glTexParameterf(target, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE.toFloat())
-        GLES20.glTexParameterf(target, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE.toFloat())
-        checkNoGLES2Error("generateTexture")
-        return textureId
+        cameraManager!!.openCamera(cameraId, cameraStateCallback, cameraThreadHandler)
     }
 
  }
