@@ -9,23 +9,12 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
-import jp.shiguredo.sora.sdk.channel.SoraMediaChannel
-import jp.shiguredo.sora.sdk.channel.option.SoraMediaOption
-import jp.shiguredo.sora.sdk.channel.option.SoraVideoOption
-import jp.shiguredo.sora.sdk.channel.signaling.message.PushMessage
-import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.egl.EGLContext
 import org.webrtc.Logging
-import org.webrtc.SurfaceTextureHelper
 import org.webrtc.ThreadUtils
 import android.os.HandlerThread
-import org.jetbrains.annotations.Nullable
-import java.util.concurrent.Callable
 import android.graphics.SurfaceTexture
-import android.hardware.Camera.Parameters.*
 import android.opengl.GLES11Ext
 import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
@@ -117,7 +106,7 @@ class CameraOnly2Activity : Activity() {
         val oesTextureId = GlUtil.generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
         var lastFrameCaptured = System.currentTimeMillis()
         val fpsIntervalFramesTarget = 30
-        var fpsIntevalStart = lastFrameCaptured
+        var fpsIntervalStart = lastFrameCaptured
         var fpsIntervalFrames = 0
         surfaceTexture = SurfaceTexture(oesTextureId)
         surfaceTexture!!.setOnFrameAvailableListener(
@@ -129,9 +118,9 @@ class CameraOnly2Activity : Activity() {
                     if (fpsIntervalFrames != fpsIntervalFramesTarget) {
                         fpsIntervalFrames++
                     } else {
-                        Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntevalStart)))
+                        Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntervalStart)))
                         fpsIntervalFrames = 0
-                        fpsIntevalStart = current
+                        fpsIntervalStart = current
                     }
                     Unit
                 },

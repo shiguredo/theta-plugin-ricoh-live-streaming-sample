@@ -9,21 +9,11 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
-import jp.shiguredo.sora.sdk.channel.SoraMediaChannel
-import jp.shiguredo.sora.sdk.channel.option.SoraMediaOption
-import jp.shiguredo.sora.sdk.channel.option.SoraVideoOption
-import jp.shiguredo.sora.sdk.channel.signaling.message.PushMessage
-import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.egl.EGLContext
 import org.webrtc.Logging
-import org.webrtc.SurfaceTextureHelper
 import org.webrtc.ThreadUtils
 import android.os.HandlerThread
-import org.jetbrains.annotations.Nullable
-import java.util.concurrent.Callable
 import android.graphics.SurfaceTexture
 import android.hardware.Camera.Parameters.*
 import android.opengl.GLES11Ext
@@ -31,12 +21,28 @@ import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
 import android.opengl.GLES20
 import java.lang.Exception
+import javax.microedition.khronos.egl.EGL10
 
 
 @Suppress("DEPRECATION")
 class CameraOnlyActivity : Activity() {
     companion object {
         private val TAG = CameraOnlyActivity::class.simpleName
+
+        private const val EGL_OPENGL_ES2_BIT = 4
+        // Android-specific extension.
+        private const val EGL_RECORDABLE_ANDROID = 0x3142
+
+        private val CONFIG_PIXEL_RGBA_BUFFER_RECORDABLE = intArrayOf(
+                EGL10.EGL_RED_SIZE, 8,
+                EGL10.EGL_GREEN_SIZE, 8,
+                EGL10.EGL_BLUE_SIZE, 8,
+                EGL10.EGL_ALPHA_SIZE, 8,
+                EGL10.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
+                EGL_RECORDABLE_ANDROID, 1,
+                EGL10.EGL_NONE
+        )
     }
 
     // Capture parameters
@@ -67,7 +73,7 @@ class CameraOnlyActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
-        eglBase = EglBase.create()
+        eglBase = EglBase.create(null, CONFIG_PIXEL_RGBA_BUFFER_RECORDABLE)
         eglBaseContext = eglBase!!.eglBaseContext
         setupTexture()
         setupThetaDevices()
@@ -117,7 +123,7 @@ class CameraOnlyActivity : Activity() {
         val oesTextureId = GlUtil.generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
         var lastFrameCaptured = System.currentTimeMillis()
         val fpsIntervalFramesTarget = 30
-        var fpsIntevalStart = lastFrameCaptured
+        var fpsIntervalStart = lastFrameCaptured
         var fpsIntervalFrames = 0
         surfaceTexture = SurfaceTexture(oesTextureId)
         surfaceTexture!!.setOnFrameAvailableListener(
@@ -129,9 +135,9 @@ class CameraOnlyActivity : Activity() {
                     if (fpsIntervalFrames != fpsIntervalFramesTarget) {
                         fpsIntervalFrames++
                     } else {
-                        Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntevalStart)))
+                        Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntervalStart)))
                         fpsIntervalFrames = 0
-                        fpsIntevalStart = current
+                        fpsIntervalStart = current
                     }
                     Unit
                 },
@@ -169,24 +175,29 @@ class CameraOnlyActivity : Activity() {
 
         parameters.previewFrameRate = frameRate
 
-        parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
-        parameters.set("face-detection", 0)
+        // parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
+        // parameters.set("face-detection", 0)
 
         // This does NOT work.
         // parameters.setPreviewFpsRange(frameRate, frameRate);
 
-        // parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
+        parameters.set("RIC_SHOOTING_MODE", shootingMode.value)
         // Any effect? At least, it seems do no harm.
         // parameters.set("video-size", shootingMode.getVideoSize());
         // parameters.set("video-size", "5376x2688");
+        parameters.set("video-size", "3840x1920")
+
+        parameters.setPreviewSize(3840, 1920)
+        // parameters.setPreviewSize(5376, 2688)
+
         // If recording-hint is set to true, camera become frozen.
         // parameters.set("recording-hint", "true");
-
-        parameters.set("secure-mode", "disable")
-        parameters.set("zsl", 1)
-
         // It seems the same as "recording-hint" above. Do not set this true.
         // parameters.setRecordingHint(true)
+
+        // parameters.set("secure-mode", "disable")
+        // parameters.set("zsl", 1)
+
 
         // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
         parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
@@ -216,7 +227,7 @@ class CameraOnlyActivity : Activity() {
         // No need for this? I guess only preview is used.
         // Almost marginal but maybe slightly better FPS when set.
         // parameters.setPictureSize(shootingMode.width, shootingMode.height)
-        parameters.setPictureSize(5376, 2688);
+        // parameters.setPictureSize(5376, 2688);
 
         if (parameters.isVideoStabilizationSupported) {
             // parameters.videoStabilization = true
@@ -228,6 +239,7 @@ class CameraOnlyActivity : Activity() {
         camera!!.parameters = parameters
         camera!!.setPreviewTexture(surfaceTexture)
         camera!!.startPreview()
+        camera!!.unlock()
     }
 
     private fun generateTexture(target: Int): Int {
