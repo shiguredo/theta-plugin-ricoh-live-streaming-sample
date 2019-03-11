@@ -34,9 +34,9 @@ import java.lang.Exception
 
 
 @Suppress("DEPRECATION")
-class CameraOnlyActivity : Activity() {
+class CameraOnly2Activity : Activity() {
     companion object {
-        private val TAG = CameraOnlyActivity::class.simpleName
+        private val TAG = CameraOnly2Activity::class.simpleName
     }
 
     // Capture parameters
@@ -169,8 +169,8 @@ class CameraOnlyActivity : Activity() {
 
         parameters.previewFrameRate = frameRate
 
-        parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
-        parameters.set("face-detection", 0)
+        // parameters.focusMode = FOCUS_MODE_CONTINUOUS_VIDEO
+        // parameters.set("face-detection", 0)
 
         // This does NOT work.
         // parameters.setPreviewFpsRange(frameRate, frameRate);
@@ -182,8 +182,8 @@ class CameraOnlyActivity : Activity() {
         // If recording-hint is set to true, camera become frozen.
         // parameters.set("recording-hint", "true");
 
-        parameters.set("secure-mode", "disable")
-        parameters.set("zsl", 1)
+        // parameters.set("secure-mode", "disable")
+        // parameters.set("zsl", 1)
 
         // It seems the same as "recording-hint" above. Do not set this true.
         // parameters.setRecordingHint(true)

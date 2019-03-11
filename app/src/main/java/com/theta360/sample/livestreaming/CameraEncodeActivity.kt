@@ -26,17 +26,21 @@ import org.jetbrains.annotations.Nullable
 import java.util.concurrent.Callable
 import android.graphics.SurfaceTexture
 import android.hardware.Camera.Parameters.*
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaFormat
 import android.opengl.GLES11Ext
 import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
 import android.opengl.GLES20
+import android.view.Surface
 import java.lang.Exception
 
 
 @Suppress("DEPRECATION")
-class CameraOnlyActivity : Activity() {
+class CameraEncodeActivity : Activity() {
     companion object {
-        private val TAG = CameraOnlyActivity::class.simpleName
+        private val TAG = CameraEncodeActivity::class.simpleName
     }
 
     // Capture parameters
@@ -49,6 +53,9 @@ class CameraOnlyActivity : Activity() {
     private val frameRate = 30
 
     private var camera: Camera? = null;
+
+    private var encoder: MediaCodec? = null;
+    private var encoderInputSurface: Surface? = null
 
     private var eglBase: EglBase? = null
     private var eglBaseContext: EglBase.Context? = null
@@ -71,6 +78,7 @@ class CameraOnlyActivity : Activity() {
         eglBaseContext = eglBase!!.eglBaseContext
         setupTexture()
         setupThetaDevices()
+        startEncoder()
         startCamera()
     }
 
@@ -137,6 +145,20 @@ class CameraOnlyActivity : Activity() {
                 },
                 handler)
         surfaceTexture!!.setDefaultBufferSize(shootingMode.width, shootingMode.height)
+    }
+
+    private fun startEncoder() {
+        val codecName = "video/avc"
+        encoder = MediaCodec.createByCodecName(codecName);
+        val mediaFormat = MediaFormat.createVideoFormat(codecName, shootingMode.width,
+                shootingMode.height)
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 15*1000*1000)
+        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
+        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 20)
+        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+        encoder!!.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        encoderInputSurface = encoder!!.createInputSurface()
+        encoder!!.start()
     }
 
     private fun startCamera() {
