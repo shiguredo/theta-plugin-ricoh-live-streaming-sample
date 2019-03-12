@@ -9,6 +9,7 @@ import android.content.Context
 import android.hardware.Camera
 import android.hardware.camera2.*
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
@@ -110,6 +111,8 @@ class CameraOnly2Activity : Activity() {
         override fun onOpened(cameraDevice: CameraDevice) {
             Logging.d(TAG, "Camera onOpened: $cameraDevice")
 
+            // setCamera1Parameters()
+
             camera = cameraDevice
             Logging.d(TAG, "surface to camera: ${surfaceView!!.holder.surface}")
             val outputs = listOf(surfaceView!!.holder.surface)
@@ -130,14 +133,15 @@ class CameraOnly2Activity : Activity() {
         override fun onConfigured(session: CameraCaptureSession) {
             Logging.d(TAG, "CameraCaptureSession.onConfigured: $session")
             cameraSession = session
-            val cameraCharacteristics = cameraManager!!.getCameraCharacteristics(cameraId!!)
-            for (key in cameraCharacteristics.keys) {
-                Logging.d(TAG, "camera characteristics: key=[${key.name}] value=[${cameraCharacteristics.get(key)}]")
-            }
-            val availableKeys = cameraCharacteristics.availableCaptureRequestKeys
-            for (availableKey in availableKeys) {
-                Logging.d(TAG, "camera characteristic available: key=[$availableKey]}]")
-            }
+
+//            val cameraCharacteristics = cameraManager!!.getCameraCharacteristics(cameraId!!)
+//            for (key in cameraCharacteristics.keys) {
+//                Logging.d(TAG, "camera characteristics: key=[${key.name}] value=[${cameraCharacteristics.get(key)}]")
+//            }
+//            val availableKeys = cameraCharacteristics.availableCaptureRequestKeys
+//            for (availableKey in availableKeys) {
+//                Logging.d(TAG, "camera characteristic available: key=[$availableKey]}]")
+//            }
             val captureRequestBuilder = camera!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             captureRequestBuilder.addTarget(surfaceView!!.holder.surface)
             // val shootingModeKey = CaptureRequest.Key("RIC_SHOOTING_MODE", String.javaClass)
@@ -169,11 +173,7 @@ class CameraOnly2Activity : Activity() {
     private fun startCamera() {
         Log.d(TAG, "startCamera")
 
-       val camera1 = Camera.open()
-        val camera1Parameters = camera1.parameters
-        camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
-        camera1.parameters = camera1Parameters
-
+        setCamera1Parameters()
 
         val threadName = "camera-handler-thread"
         cameraThread = HandlerThread(threadName)
@@ -187,6 +187,27 @@ class CameraOnly2Activity : Activity() {
         cameraId = cameraIdList[0]
 
         cameraManager!!.openCamera(cameraId!!, cameraStateCallback, cameraThreadHandler)
+    }
+
+    private fun setCamera1Parameters() {
+        val deviceModel = Build.MODEL
+        Logging.d(TAG, "deviceModel=${deviceModel}")
+        if(deviceModel.equals("RICOH THETA V")) {
+            Logging.d(TAG, "Try to set camera1 parameters")
+            val camera1 = Camera.open()
+
+            val camera1Parameters = camera1.parameters
+            camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+            camera1.parameters = camera1Parameters
+            camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI.value)
+            // camera1Parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+            camera1Parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
+            // camera1Parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto")
+
+            camera1Parameters.set("video-size", "3840x1920")
+            camera1Parameters.setPreviewSize(3840, 1920)
+            camera1.parameters = camera1Parameters
+        }
     }
 
  }
