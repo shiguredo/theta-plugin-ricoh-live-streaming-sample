@@ -7,30 +7,17 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.hardware.Camera
+import android.hardware.camera2.*
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
-import android.util.Log
-import jp.shiguredo.sora.sdk.util.SoraLogger
-import org.webrtc.*
-import org.webrtc.Logging
-import org.webrtc.ThreadUtils
 import android.os.HandlerThread
-import android.graphics.SurfaceTexture
-import android.opengl.GLES11Ext
-import org.webrtc.GlUtil
-import org.webrtc.GlUtil.checkNoGLES2Error
-import android.opengl.GLES20
-import java.lang.Exception
-import android.content.Context.CAMERA_SERVICE
-import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CameraManager
-import android.hardware.camera2.CaptureRequest
+import android.util.Log
+import android.view.SurfaceHolder
 import android.view.SurfaceView
-import java.util.Arrays.asList
-
-
+import jp.shiguredo.sora.sdk.util.SoraLogger
+import org.webrtc.Logging
+import java.lang.RuntimeException
 
 
 @Suppress("DEPRECATION")
@@ -52,29 +39,48 @@ class CameraOnly2Activity : Activity() {
     private val cameraThreadHandler: Handler? = null
 
     private var cameraManager: CameraManager? = null
+    private var cameraId: String? = null
     private var camera: CameraDevice? = null
     private var cameraSession: CameraCaptureSession? = null
-    private var cameraRequest: CaptureRequest? = null
+    private var captureRequest: CaptureRequest? = null
 
     private var surfaceView: SurfaceView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
-        surfaceView = findViewById(R.id.surfaceView)
 
         SoraLogger.enabled = true
         SoraLogger.libjingle_enabled = true
 
-        setContentView(R.layout.activity_empty)
-    }
+        setContentView(R.layout.activity_camera)
+        surfaceView = findViewById(R.id.surfaceView)
+   }
 
     override fun onResume() {
         super.onResume()
 
         setupThetaDevices()
-        startCamera()
-    }
+
+        surfaceView!!.holder.addCallback(object: SurfaceHolder.Callback {
+            override fun surfaceCreated(surfaceHolder: SurfaceHolder) {
+                Logging.d(TAG, "surfaceCreated")
+                surfaceHolder.setFixedSize(shootingMode.width, shootingMode.width)
+                // startCamera()
+            }
+
+            override fun surfaceChanged(surfaceHolder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                Logging.d(TAG, "surfaceChanged: format=$format, ${width}x$height")
+                if (width == shootingMode.width) {
+                    startCamera()
+                }
+            }
+
+            override fun surfaceDestroyed(surfaceHolder: SurfaceHolder) {
+                Logging.d(TAG, "surfaceDestroyed")
+            }
+        })
+     }
 
     override fun onPause() {
         // Configures RICOH THETA's camera. This is not a general Android configuration.
@@ -105,6 +111,7 @@ class CameraOnly2Activity : Activity() {
             Logging.d(TAG, "Camera onOpened: $cameraDevice")
 
             camera = cameraDevice
+            Logging.d(TAG, "surface to camera: ${surfaceView!!.holder.surface}")
             val outputs = listOf(surfaceView!!.holder.surface)
             camera!!.createCaptureSession(outputs, captureSessionCallback,
                     cameraThreadHandler)
@@ -120,19 +127,53 @@ class CameraOnly2Activity : Activity() {
     }
 
     private val captureSessionCallback = object: CameraCaptureSession.StateCallback() {
-        override fun onConfigureFailed(p0: CameraCaptureSession) {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        override fun onConfigured(session: CameraCaptureSession) {
+            Logging.d(TAG, "CameraCaptureSession.onConfigured: $session")
+            cameraSession = session
+            val cameraCharacteristics = cameraManager!!.getCameraCharacteristics(cameraId!!)
+            for (key in cameraCharacteristics.keys) {
+                Logging.d(TAG, "camera characteristics: key=[${key.name}] value=[${cameraCharacteristics.get(key)}]")
+            }
+            val availableKeys = cameraCharacteristics.availableCaptureRequestKeys
+            for (availableKey in availableKeys) {
+                Logging.d(TAG, "camera characteristic available: key=[$availableKey]}]")
+            }
+            val captureRequestBuilder = camera!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            captureRequestBuilder.addTarget(surfaceView!!.holder.surface)
+            // val shootingModeKey = CaptureRequest.Key("RIC_SHOOTING_MODE", String.javaClass)
+            // captureRequestBuilder.set(CaptureRequest.Key("RIC_SHOOTING_MODE", String), "RicMovieRecording4kEqui")
+
+            captureRequest = captureRequestBuilder.build()
+            session.setRepeatingRequest(captureRequest, captureCallback, Handler())
         }
 
-        override fun onConfigured(p0: CameraCaptureSession) {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        override fun onConfigureFailed(session: CameraCaptureSession) {
+            Logging.e(TAG, "CameraCaptureSession.onConfigureFailed: $session")
+            throw RuntimeException("CameraCaptureSession.onConfigureFailed")
+        }
+    }
+
+    private val captureCallback = object: CameraCaptureSession.CaptureCallback() {
+        override fun onCaptureStarted(session: CameraCaptureSession, request: CaptureRequest, timestamp: Long, frameNumber: Long) {
+            super.onCaptureStarted(session, request, timestamp, frameNumber)
+            Logging.d(TAG, "CaptureCallback.onCaptureStarted")
         }
 
+        override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
+            super.onCaptureFailed(session, request, failure)
+            Logging.d(TAG, "CaptureCallback.onCaptureFailed: ${failure}")
+        }
     }
 
     @SuppressLint("MissingPermission")
     private fun startCamera() {
         Log.d(TAG, "startCamera")
+
+       val camera1 = Camera.open()
+        val camera1Parameters = camera1.parameters
+        camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+        camera1.parameters = camera1Parameters
+
 
         val threadName = "camera-handler-thread"
         cameraThread = HandlerThread(threadName)
@@ -143,9 +184,9 @@ class CameraOnly2Activity : Activity() {
         val cameraIdList = cameraManager!!.cameraIdList
 
         Logging.d(TAG, "cameraIdList = ${cameraIdList.joinToString(separator = ", ")}")
-        val cameraId = cameraIdList[0]
+        cameraId = cameraIdList[0]
 
-        cameraManager!!.openCamera(cameraId, cameraStateCallback, cameraThreadHandler)
+        cameraManager!!.openCamera(cameraId!!, cameraStateCallback, cameraThreadHandler)
     }
 
  }
