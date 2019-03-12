@@ -22,9 +22,9 @@ import java.lang.RuntimeException
 
 
 @Suppress("DEPRECATION")
-class CameraOnly2Activity : Activity() {
+class Camera2OnlyActivity : Activity() {
     companion object {
-        private val TAG = CameraOnly2Activity::class.simpleName
+        private val TAG = Camera2OnlyActivity::class.simpleName
     }
 
     // Capture parameters
@@ -158,9 +158,25 @@ class CameraOnly2Activity : Activity() {
     }
 
     private val captureCallback = object: CameraCaptureSession.CaptureCallback() {
+        var lastCapturedMillis = System.currentTimeMillis()
+        val fpsIntervalFramesTarget = 30
+        var fpsIntervalStartMills = lastCapturedMillis
+        var fpsIntervalFrames = 0
+
         override fun onCaptureStarted(session: CameraCaptureSession, request: CaptureRequest, timestamp: Long, frameNumber: Long) {
             super.onCaptureStarted(session, request, timestamp, frameNumber)
-            Logging.d(TAG, "CaptureCallback.onCaptureStarted")
+            val currentMillis = System.currentTimeMillis()
+            // Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
+
+            lastCapturedMillis = currentMillis
+            if (fpsIntervalFrames != fpsIntervalFramesTarget) {
+                fpsIntervalFrames++
+            } else {
+                Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(currentMillis - fpsIntervalStartMills)))
+                fpsIntervalFrames = 0
+                fpsIntervalStartMills = currentMillis
+            }
+
         }
 
         override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
