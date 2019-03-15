@@ -8,10 +8,7 @@ import android.app.Activity
 import android.content.Context
 import android.hardware.Camera
 import android.hardware.camera2.*
-import android.media.AudioManager
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaFormat
+import android.media.*
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -22,6 +19,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.Logging
+import java.lang.Exception
 import java.lang.RuntimeException
 
 
@@ -30,6 +28,14 @@ class Camera2ToEncodeActivity : Activity() {
     companion object {
         private val TAG = Camera2ToEncodeActivity::class.simpleName
     }
+
+    enum class OutputTarget {
+        BOTH,
+        ENCODER,
+        VIEW
+    }
+
+    private val outputTarget: OutputTarget = OutputTarget.ENCODER
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
@@ -107,14 +113,65 @@ class Camera2ToEncodeActivity : Activity() {
     }
 
     private fun startEncoder() {
-        val codecName = "video/avc"
-        encoder = MediaCodec.createEncoderByType(codecName);
-        val mediaFormat = MediaFormat.createVideoFormat(codecName, shootingMode.width,
-                shootingMode.height)
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 15*1000*1000)
+        val mimeType = MediaFormat.MIMETYPE_VIDEO_AVC
+
+        for (codecInfo in MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos) {
+            if (!codecInfo.isEncoder) continue
+
+            val types = codecInfo.supportedTypes
+            for (type in types) {
+                // Logging.d(TAG, "type=${type}")
+                if (type != mimeType) continue
+
+                val c = codecInfo.getCapabilitiesForType(type)
+                val v = c.videoCapabilities ?: continue
+                val e = c.encoderCapabilities
+                val w = fun(F : () -> Any): Any {
+                    return try { F() } catch (e: Exception) { "not supported" } }
+
+                Logging.d(TAG, """
+
+                    ================== type=$type codec capabilities ====================
+                    defaultFormat:            ${c.defaultFormat}
+                    colorFormats:             ${c.colorFormats.joinToString(", ")}
+                    maxSupportedInstances:    ${c.maxSupportedInstances}
+                    profileLevels:            ${c.profileLevels.map { "${it.level}/${it.profile}" }.joinToString(", ")}
+                    ================== type=$type video capabilities ====================
+                    bitrateRange:             ${v.bitrateRange}
+                    supportedFrameRates:      ${v.supportedFrameRates}
+                    supportedWidths:          ${v.supportedWidths}
+                    supportedHeights:         ${v.supportedHeights}
+                    For 3840x1920
+                    frameRatesFor:            ${w {v.getSupportedFrameRatesFor(3840, 1920)}}
+                    archievableFrameRatesFor: ${w {v.getAchievableFrameRatesFor(3840, 1920)}}
+                    ================== type=$type encoder capabilities ==================
+                    qualityRange:             ${e.qualityRange}
+                    complexityRange:          ${e.complexityRange}
+                    =====================================================================
+                """.trimIndent())
+            }
+
+            // throw RuntimeException("dummy")
+        }
+
+
+        // val mediaCodecList = MediaCodecList(MediaCodecList.ALL_CODECS)
+        // mediaCodecList.findEncoderForFormat(mediaFormat1)
+
+
+
+        encoder = MediaCodec.createEncoderByType(mimeType);
+        val mediaFormat = MediaFormat.createVideoFormat(mimeType,
+                shootingMode.width, shootingMode.height)
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 3*1000*1000)
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 20)
         mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+        // val OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m = 2141391876
+        // mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar)
+
+        // mediaFormat.setFeatureEnabled(MediaCodecInfo.CodecCapabilities.FEATURE_IntraRefresh, false)
+
         encoder!!.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoderInputSurface = encoder!!.createInputSurface()
         encoder!!.start()
@@ -153,7 +210,7 @@ class Camera2ToEncodeActivity : Activity() {
         if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
             Logging.d(TAG, "consumeOutputBuffer: config frame, index=${index}, info.offset=${info.offset}, info.size=${info.size}");
         }
-        Logging.d(TAG, "consumeOutputBuffer: index=${index}, info.offset=${info.offset}, info.size=${info.size}");
+        // Logging.d(TAG, "consumeOutputBuffer: index=${index}, info.offset=${info.offset}, info.size=${info.size}");
 
         encoder.releaseOutputBuffer(index, false);
 
@@ -179,9 +236,15 @@ class Camera2ToEncodeActivity : Activity() {
             // setCamera1Parameters()
 
             camera = cameraDevice
-            Logging.d(TAG, "surface to camera: ${surfaceView!!.holder.surface}")
-            // val outputs = listOf(encoderInputSurface, surfaceView!!.holder.surface)
-            val outputs = listOf(encoderInputSurface)
+            val outputs = when (outputTarget) {
+                OutputTarget.BOTH ->
+                    listOf(encoderInputSurface, surfaceView!!.holder.surface)
+                OutputTarget.VIEW ->
+                    listOf(surfaceView!!.holder.surface)
+                OutputTarget.ENCODER ->
+                    listOf(encoderInputSurface)
+            }
+            Logging.d(TAG, "Camera outputs: ${outputs}")
             camera!!.createCaptureSession(outputs, captureSessionCallback,
                     cameraThreadHandler)
         }
@@ -209,9 +272,16 @@ class Camera2ToEncodeActivity : Activity() {
 //                Logging.d(TAG, "camera characteristic available: key=[$availableKey]}]")
 //            }
             val captureRequestBuilder = camera!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            captureRequestBuilder.addTarget(encoderInputSurface)
-            // val shootingModeKey = CaptureRequest.Key("RIC_SHOOTING_MODE", String.javaClass)
-            // captureRequestBuilder.set(CaptureRequest.Key("RIC_SHOOTING_MODE", String), "RicMovieRecording4kEqui")
+            when (outputTarget) {
+                OutputTarget.BOTH -> {
+                    captureRequestBuilder.addTarget(encoderInputSurface)
+                    captureRequestBuilder.addTarget(surfaceView!!.holder.surface)
+                }
+                OutputTarget.ENCODER ->
+                    captureRequestBuilder.addTarget(encoderInputSurface)
+                OutputTarget.VIEW ->
+                    captureRequestBuilder.addTarget(surfaceView!!.holder.surface)
+            }
 
             captureRequest = captureRequestBuilder.build()
             session.setRepeatingRequest(captureRequest, captureCallback, Handler())
@@ -232,7 +302,7 @@ class Camera2ToEncodeActivity : Activity() {
         override fun onCaptureStarted(session: CameraCaptureSession, request: CaptureRequest, timestamp: Long, frameNumber: Long) {
             super.onCaptureStarted(session, request, timestamp, frameNumber)
             val currentMillis = System.currentTimeMillis()
-            Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
+            // Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
 
             lastCapturedMillis = currentMillis
             if (fpsIntervalFrames != fpsIntervalFramesTarget) {
@@ -288,6 +358,7 @@ class Camera2ToEncodeActivity : Activity() {
 
             camera1Parameters.set("video-size", "3840x1920")
             camera1Parameters.setPreviewSize(3840, 1920)
+            // camera1Parameters.set("recording-hint", "true")
             camera1.parameters = camera1Parameters
         }
     }
