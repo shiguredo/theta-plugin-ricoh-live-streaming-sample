@@ -20,9 +20,11 @@ import android.os.HandlerThread
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.widget.ImageView
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.Logging
 import java.lang.RuntimeException
+import kotlin.random.Random
 
 
 @Suppress("DEPRECATION")
@@ -30,6 +32,8 @@ class Camera2Sv2CanvasActivity : Activity() {
     companion object {
         private val TAG = Camera2Sv2CanvasActivity::class.simpleName
     }
+
+    private val mainHanlder = Handler()
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
@@ -53,6 +57,7 @@ class Camera2Sv2CanvasActivity : Activity() {
     private var captureRequest: CaptureRequest? = null
 
     private var surfaceView: SurfaceView? = null
+    private var imageView: ImageView? = null
 
     private var bitmapBihindCanvas: Bitmap? = null
     private var canvas: Canvas? = null
@@ -66,6 +71,7 @@ class Camera2Sv2CanvasActivity : Activity() {
 
         setContentView(R.layout.activity_camera_and_image)
         surfaceView = findViewById(R.id.surfaceView)
+        imageView = findViewById(R.id.imageView)
    }
 
     override fun onResume() {
@@ -127,7 +133,8 @@ class Camera2Sv2CanvasActivity : Activity() {
 
         bitmapBihindCanvas = Bitmap.createBitmap(shootingMode.width, shootingMode.height,
                 Bitmap.Config.ARGB_8888)
-        canvas = Canvas(bitmapBihindCanvas)
+        canvas = Canvas()
+        canvas!!.setBitmap(bitmapBihindCanvas)
         Logging.d(TAG, "Bitmap and canvas created: ${bitmapBihindCanvas}, ${canvas}")
     }
 
@@ -188,9 +195,30 @@ class Camera2Sv2CanvasActivity : Activity() {
             val currentMillis = System.currentTimeMillis()
             // Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
 
-            surfaceView!!.draw(canvas)
-            val afterDrawMillis = System.currentTimeMillis()
-            Logging.d(TAG, "Draw from surface view to canvas: ${afterDrawMillis - currentMillis} [msec]")
+            // val tmpBitmap = Bitmap.createBitmap(shootingMode.width, shootingMode.height, Bitmap.Config.ARGB_8888)
+            // val tmpCanvas = Canvas()
+            // tmpCanvas.setBitmap(tmpBitmap)
+            // surfaceView!!.draw(tmpCanvas)
+
+            // mainHanlder.post {
+            //     imageView!!.setImageBitmap(tmpBitmap)
+            // }
+
+            val surfaceViewOut: SurfaceView = findViewById(R.id.surfaceViewOut)
+            val outCanvas = surfaceViewOut.holder.lockCanvas()
+            surfaceView!!.draw(outCanvas)
+
+            // val randomValue = Random.nextInt(255)
+            // Logging.d(TAG, "random=${randomValue}")
+            // outCanvas.drawRGB(255, 128, randomValue)
+
+            surfaceViewOut.holder.unlockCanvasAndPost(outCanvas)
+            val afterDrawToCanvasMillis = System.currentTimeMillis()
+
+            val afterSetToImageViewMillis = System.currentTimeMillis()
+            Logging.d(TAG, "capture to draw: ${afterDrawToCanvasMillis - currentMillis}, " +
+                    "set to image view: ${afterSetToImageViewMillis - afterDrawToCanvasMillis} [msec]")
+
             lastCapturedMillis = currentMillis
             if (fpsIntervalFrames != fpsIntervalFramesTarget) {
                 fpsIntervalFrames++
