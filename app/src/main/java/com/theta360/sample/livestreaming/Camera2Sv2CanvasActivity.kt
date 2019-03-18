@@ -64,7 +64,7 @@ class Camera2Sv2CanvasActivity : Activity() {
         SoraLogger.enabled = true
         SoraLogger.libjingle_enabled = true
 
-        setContentView(R.layout.activity_camera)
+        setContentView(R.layout.activity_camera_and_image)
         surfaceView = findViewById(R.id.surfaceView)
    }
 
@@ -188,6 +188,9 @@ class Camera2Sv2CanvasActivity : Activity() {
             val currentMillis = System.currentTimeMillis()
             // Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
 
+            surfaceView!!.draw(canvas)
+            val afterDrawMillis = System.currentTimeMillis()
+            Logging.d(TAG, "Draw from surface view to canvas: ${afterDrawMillis - currentMillis} [msec]")
             lastCapturedMillis = currentMillis
             if (fpsIntervalFrames != fpsIntervalFramesTarget) {
                 fpsIntervalFrames++
