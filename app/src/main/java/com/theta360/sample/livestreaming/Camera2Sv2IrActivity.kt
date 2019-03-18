@@ -35,7 +35,7 @@ class Camera2Sv2IrActivity : Activity() {
         VIEW
     }
 
-    private val outputTarget: OutputTarget = OutputTarget.BOTH
+    private val outputTarget: OutputTarget = OutputTarget.IMAGE_READER
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
@@ -47,7 +47,10 @@ class Camera2Sv2IrActivity : Activity() {
     private val frameRate = 30
 
     private var cameraThread: HandlerThread? = null
-    private val cameraThreadHandler: Handler? = null
+    private var cameraThreadHandler: Handler? = null
+
+    private var imageReaderThread: HandlerThread? = null
+    private var imageReaderThreadHandler: Handler? = null
 
     private var cameraManager: CameraManager? = null
     private var cameraId: String? = null
@@ -121,10 +124,24 @@ class Camera2Sv2IrActivity : Activity() {
     }
 
     private fun setupImageReader() {
+        val threadName = "image-reader-thread"
+        imageReaderThread = HandlerThread(threadName)
+        imageReaderThread!!.start()
+        imageReaderThreadHandler = Handler(imageReaderThread!!.getLooper())
+
         val maxImages = 2
         imageReader = ImageReader.newInstance(shootingMode.width, shootingMode.height,
-                ImageFormat.JPEG, maxImages)
+                ImageFormat.PRIVATE, maxImages)
+        imageReader!!.setOnImageAvailableListener({ reader: ImageReader ->
+            // Logging.d(TAG, "onImageAvailable")
+            val startMillis = System.currentTimeMillis()
+            val image = reader.acquireNextImage()
+            image!!.close()
+            Logging.d(TAG, "onImageAvailable image=${image} in ${System.currentTimeMillis() - startMillis} [msec]")
+        }, imageReaderThreadHandler!!)
+        Logging.d(TAG, "ImageReader created: ${imageReader}")
     }
+
     private val cameraStateCallback = object: CameraDevice.StateCallback() {
         override fun onOpened(cameraDevice: CameraDevice) {
             Logging.d(TAG, "Camera onOpened: $cameraDevice")
@@ -132,7 +149,7 @@ class Camera2Sv2IrActivity : Activity() {
             // setCamera1Parameters()
 
             camera = cameraDevice
-            Logging.d(TAG, "surface to camera: ${surfaceView!!.holder.surface}")
+            Logging.d(TAG, "imageReader.surface : ${imageReader!!.surface}")
             val outputs = when (outputTarget) {
                 OutputTarget.BOTH ->
                     listOf(surfaceView!!.holder.surface, imageReader!!.surface)
@@ -191,7 +208,7 @@ class Camera2Sv2IrActivity : Activity() {
 
     private val captureCallback = object: CameraCaptureSession.CaptureCallback() {
         var lastCapturedMillis = System.currentTimeMillis()
-        val fpsIntervalFramesTarget = 30
+        val fpsIntervalFramesTarget = 10
         var fpsIntervalStartMills = lastCapturedMillis
         var fpsIntervalFrames = 0
 
@@ -208,14 +225,11 @@ class Camera2Sv2IrActivity : Activity() {
                 fpsIntervalFrames = 0
                 fpsIntervalStartMills = currentMillis
             }
-
-
-
         }
 
         override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
             super.onCaptureFailed(session, request, failure)
-            Logging.d(TAG, "CaptureCallback.onCaptureFailed: ${failure}")
+            Logging.d(TAG, "CaptureCallback.onCaptureFailed: ${failure.reason}")
         }
     }
 
@@ -228,7 +242,7 @@ class Camera2Sv2IrActivity : Activity() {
         val threadName = "camera-handler-thread"
         cameraThread = HandlerThread(threadName)
         cameraThread!!.start()
-        val cameraThreadHandler = Handler(cameraThread!!.getLooper())
+        cameraThreadHandler = Handler(cameraThread!!.getLooper())
 
         cameraManager = this.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val cameraIdList = cameraManager!!.cameraIdList
