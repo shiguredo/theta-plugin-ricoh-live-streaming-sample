@@ -12,17 +12,15 @@ package org.webrtc;
 
 import android.content.Context;
 
-import com.theta360.sample.livestreaming.ThetaCapturer;
-
-import org.jetbrains.annotations.Nullable;
+import com.theta360.sample.livestreaming.ShootingMode;
 
 public class ThetaCamera1Capturer extends Camera1Capturer {
-    private final ThetaCapturer.ShootingMode shootingMode;
+    private final ShootingMode shootingMode;
     private final boolean captureToTexture;
     private final boolean maintainResolution;
 
   public ThetaCamera1Capturer(
-          ThetaCapturer.ShootingMode shootingMode,
+          ShootingMode shootingMode,
           String cameraName,
           CameraVideoCapturer.CameraEventsHandler eventsHandler,
           boolean captureToTexture,

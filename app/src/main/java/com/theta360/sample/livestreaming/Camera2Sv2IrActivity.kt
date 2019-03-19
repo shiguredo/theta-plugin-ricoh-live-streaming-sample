@@ -39,7 +39,7 @@ class Camera2Sv2IrActivity : Activity() {
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
-    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
+    private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
@@ -261,9 +261,9 @@ class Camera2Sv2IrActivity : Activity() {
             val camera1 = Camera.open()
 
             val camera1Parameters = camera1.parameters
-            camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+            camera1Parameters.set("RIC_SHOOTING_MODE", ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
             camera1.parameters = camera1Parameters
-            camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI.value)
+            camera1Parameters.set("RIC_SHOOTING_MODE", ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI.value)
             // camera1Parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
             camera1Parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
             // camera1Parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto")

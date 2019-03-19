@@ -9,21 +9,11 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
-import jp.shiguredo.sora.sdk.channel.SoraMediaChannel
-import jp.shiguredo.sora.sdk.channel.option.SoraMediaOption
-import jp.shiguredo.sora.sdk.channel.option.SoraVideoOption
-import jp.shiguredo.sora.sdk.channel.signaling.message.PushMessage
-import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.egl.EGLContext
 import org.webrtc.Logging
-import org.webrtc.SurfaceTextureHelper
 import org.webrtc.ThreadUtils
 import android.os.HandlerThread
-import org.jetbrains.annotations.Nullable
-import java.util.concurrent.Callable
 import android.graphics.SurfaceTexture
 import android.hardware.Camera.Parameters.*
 import android.media.MediaCodec
@@ -45,7 +35,7 @@ class CameraEncodeActivity : Activity() {
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
-    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
+    private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
@@ -186,7 +176,7 @@ class CameraEncodeActivity : Activity() {
         // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
         // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
         parameters.set("RIC_SHOOTING_MODE",
-                ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+                ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
         camera!!.parameters = parameters
 
         parameters.previewFrameRate = frameRate

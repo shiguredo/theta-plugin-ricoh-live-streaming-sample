@@ -14,7 +14,7 @@ import org.webrtc.*
 class MainActivity : Activity() {
     companion object {
         private val TAG = MainActivity::class.simpleName
-        private val SHOOTING_MODE = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_1920
+        private val SHOOTING_MODE = ShootingMode.RIC_MOVIE_PREVIEW_1920
     }
 
     private var localView: SurfaceViewRenderer? = null

@@ -11,11 +11,10 @@
 package org.webrtc;
 
 import android.content.Context;
-import android.hardware.Camera;
 import android.os.Handler;
 import android.os.SystemClock;
 
-import com.theta360.sample.livestreaming.ThetaCapturer;
+import com.theta360.sample.livestreaming.ShootingMode;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,7 +36,7 @@ class ThetaCamera1Session implements CameraSession {
 
   private static enum SessionState { RUNNING, STOPPED }
 
-  private ThetaCapturer.ShootingMode shootingMode;
+  private ShootingMode shootingMode;
 
   private final Handler cameraThreadHandler;
   private final Events events;
@@ -56,7 +55,7 @@ class ThetaCamera1Session implements CameraSession {
 
   // TODO(titovartem) make correct fix during webrtc:9175
   @SuppressWarnings("ByteBufferBackingArray")
-  public static void create(ThetaCapturer.ShootingMode shootingMode,
+  public static void create(ShootingMode shootingMode,
                             final CreateSessionCallback callback, final Events events,
                             final boolean captureToTexture, final Context applicationContext,
                             final SurfaceTextureHelper surfaceTextureHelper, final int cameraId, final int width,
@@ -121,7 +120,7 @@ class ThetaCamera1Session implements CameraSession {
 
   private static void updateCameraParameters(android.hardware.Camera camera,
                                              android.hardware.Camera.Parameters parameters,
-                                             ThetaCapturer.ShootingMode shootingMode,
+                                             ShootingMode shootingMode,
                                              int frameRate,
                                              boolean captureToTexture,
                                              CaptureFormat captureFormat,
@@ -136,7 +135,7 @@ class ThetaCamera1Session implements CameraSession {
       // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
       // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
       parameters.set("RIC_SHOOTING_MODE",
-              ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.getValue());
+              ShootingMode.RIC_MOVIE_PREVIEW_3840.getValue());
       camera.setParameters(parameters);
 
       parameters.setPreviewFrameRate(frameRate);

@@ -15,7 +15,6 @@ import org.webrtc.Logging
 import org.webrtc.ThreadUtils
 import android.os.HandlerThread
 import android.graphics.SurfaceTexture
-import android.hardware.Camera.Parameters.*
 import android.opengl.GLES11Ext
 import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
@@ -47,7 +46,7 @@ class CameraOnlyActivity : Activity() {
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
-    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
+    private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
@@ -176,7 +175,7 @@ class CameraOnlyActivity : Activity() {
             // Sometimes, maybe just after restart?, camera emits no preview with RicMovieRecording4kEqui.
             // Once set to RicMoviePreview3840 here. It will be overwritten afterward.
             parameters.set("RIC_SHOOTING_MODE",
-                    ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+                    ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
             camera!!.parameters = parameters
 
             parameters.previewFrameRate = frameRate

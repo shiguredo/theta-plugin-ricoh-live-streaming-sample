@@ -8,11 +8,9 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.ImageFormat
 import android.hardware.Camera
 import android.hardware.camera2.*
 import android.media.AudioManager
-import android.media.ImageReader
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -24,7 +22,6 @@ import android.widget.ImageView
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.Logging
 import java.lang.RuntimeException
-import kotlin.random.Random
 
 
 @Suppress("DEPRECATION")
@@ -37,7 +34,7 @@ class Camera2Sv2CanvasActivity : Activity() {
 
     // Capture parameters
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
-    private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
+    private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
     // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
@@ -263,9 +260,9 @@ class Camera2Sv2CanvasActivity : Activity() {
             val camera1 = Camera.open()
 
             val camera1Parameters = camera1.parameters
-            camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
+            camera1Parameters.set("RIC_SHOOTING_MODE", ShootingMode.RIC_MOVIE_PREVIEW_3840.value)
             camera1.parameters = camera1Parameters
-            camera1Parameters.set("RIC_SHOOTING_MODE", ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI.value)
+            camera1Parameters.set("RIC_SHOOTING_MODE", ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI.value)
             // camera1Parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
             camera1Parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
             // camera1Parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto")
