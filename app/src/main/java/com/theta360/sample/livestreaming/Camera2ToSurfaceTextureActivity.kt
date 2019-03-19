@@ -25,9 +25,9 @@ import org.webrtc.ThreadUtils
 
 
 @Suppress("DEPRECATION")
-class Camera2ToTextureActivity : Activity() {
+class Camera2ToSurfaceTextureActivity : Activity() {
     companion object {
-        private val TAG = Camera2ToTextureActivity::class.simpleName
+        private val TAG = Camera2ToSurfaceTextureActivity::class.simpleName
     }
 
     // Capture parameters

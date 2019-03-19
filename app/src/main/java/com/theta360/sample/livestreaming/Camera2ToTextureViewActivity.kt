@@ -210,7 +210,7 @@ class Camera2ToTextureViewActivity : Activity() {
         override fun onCaptureStarted(session: CameraCaptureSession, request: CaptureRequest, timestamp: Long, frameNumber: Long) {
             super.onCaptureStarted(session, request, timestamp, frameNumber)
             val currentMillis = System.currentTimeMillis()
-            Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
+            // Logging.d(TAG, "CaptureCallback.onCaptureStarted: interval=${currentMillis - lastCapturedMillis} [msec]")
 
             lastCapturedMillis = currentMillis
             if (fpsIntervalFrames != fpsIntervalFramesTarget) {
