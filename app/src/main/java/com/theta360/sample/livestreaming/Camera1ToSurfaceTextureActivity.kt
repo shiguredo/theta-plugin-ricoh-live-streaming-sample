@@ -273,21 +273,21 @@ class Camera1ToSurfaceTextureActivity : Activity() {
     }
 
     private fun invokeAtFrontUninterruptibly(handler: Handler, callable: () -> Unit) {
-        var exceptionOccured: Exception? = null
+        var exceptionOccurred: Exception? = null
         val countDownLatch = CountDownLatch(1)
         handler.post {
             try {
                 callable()
             } catch (e: Exception) {
-                exceptionOccured = e
+                exceptionOccurred = e
             } finally {
                 countDownLatch.countDown()
             }
         }
 
         countDownLatch.await()
-        if (exceptionOccured != null) {
-            throw java.lang.RuntimeException(exceptionOccured)
+        if (exceptionOccurred != null) {
+            throw java.lang.RuntimeException(exceptionOccurred)
         }
     }
 
