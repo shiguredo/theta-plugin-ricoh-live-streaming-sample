@@ -4,24 +4,20 @@
 package com.theta360.sample.livestreaming
 
 import android.app.Activity
+import android.graphics.SurfaceTexture
 import android.hardware.Camera
 import android.media.AudioManager
+import android.opengl.GLES11Ext
+import android.opengl.GLES20
 import android.os.Bundle
 import android.os.Handler
-import android.util.Log
-import jp.shiguredo.sora.sdk.util.SoraLogger
-import org.webrtc.*
-import org.webrtc.Logging
-import org.webrtc.ThreadUtils
 import android.os.HandlerThread
-import android.graphics.SurfaceTexture
-import android.opengl.GLES11Ext
+import android.util.Log
+import android.view.Surface
+import org.webrtc.EglBase
 import org.webrtc.GlUtil
 import org.webrtc.GlUtil.checkNoGLES2Error
-import android.opengl.GLES20
-import android.os.Process
-import android.view.Surface
-import java.lang.Exception
+import java.util.concurrent.CountDownLatch
 import javax.microedition.khronos.egl.EGL10
 
 
@@ -44,6 +40,10 @@ class Camera1ToSurfaceTextureActivity : Activity() {
                 EGL_RECORDABLE_ANDROID, 1,
                 EGL10.EGL_NONE
         )
+
+        private fun logD(message: String) {
+            Log.d(TAG, message)
+        }
     }
 
     // Capture parameters
@@ -68,10 +68,6 @@ class Camera1ToSurfaceTextureActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        SoraLogger.enabled = true
-        SoraLogger.libjingle_enabled = true
-
         setContentView(R.layout.activity_empty)
     }
 
@@ -94,7 +90,7 @@ class Camera1ToSurfaceTextureActivity : Activity() {
         surfaceTexture?.release()
         // Configures RICOH THETA's camera. This is not a general Android configuration.
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
-        SoraLogger.d(TAG, "Broadcast ACTION_MAIN_CAMERA_OPEN")
+        logD("Broadcast ACTION_MAIN_CAMERA_OPEN")
         ThetaCapturer.actionMainCameraOpen(applicationContext)
 
         eglBase?.release()
@@ -110,7 +106,7 @@ class Camera1ToSurfaceTextureActivity : Activity() {
         (getSystemService(AUDIO_SERVICE) as AudioManager)
                 .setParameters("RicUseBFormat=false")
         // Prepare to use camera
-        SoraLogger.d(TAG, "Broadcast ACTION_MAIN_CAMERA_CLOSE")
+        logD("Broadcast ACTION_MAIN_CAMERA_CLOSE")
         ThetaCapturer.actionMainCameraClose(applicationContext)
     }
 
@@ -120,7 +116,7 @@ class Camera1ToSurfaceTextureActivity : Activity() {
         textureCaptureThread!!.start()
         textureCaptureHandler = Handler(textureCaptureThread!!.getLooper())
 
-        ThreadUtils.invokeAtFrontUninterruptibly(textureCaptureHandler) {
+        invokeAtFrontUninterruptibly(textureCaptureHandler!!) {
             eglBase!!.createDummyPbufferSurface();
             eglBase!!.makeCurrent();
         }
@@ -136,12 +132,12 @@ class Camera1ToSurfaceTextureActivity : Activity() {
                 {_ ->
                     surfaceTexture!!.updateTexImage()
                     val current = System.currentTimeMillis()
-                    // Logging.d(TAG, "Camera image captured. interval=${current - lastFrameCaptured} msec")
+                    // logD("Camera image captured. interval=${current - lastFrameCaptured} msec")
                     lastFrameCaptured = current
                     if (fpsIntervalFrames != fpsIntervalFramesTarget) {
                         fpsIntervalFrames++
                     } else {
-                        Logging.d(TAG, "SurfaceTexture: %.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntervalStart)))
+                        logD("SurfaceTexture: %.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntervalStart)))
                         fpsIntervalFrames = 0
                         fpsIntervalStart = current
                     }
@@ -166,14 +162,14 @@ class Camera1ToSurfaceTextureActivity : Activity() {
                     camera = android.hardware.Camera.open(cameraId)
                     break
                 } catch (e: Exception) {
-                    Logging.d(TAG, "Ignore error in opening camera: $e")
+                    logD("Ignore error in opening camera: $e")
                     Thread.sleep(100)
                 }
             }
             if (camera != null) {
-                Log.d(TAG, "Camera opened.")
+                logD("Camera opened.")
             } else {
-                Log.e(TAG, "Camera open failed.")
+                logD("Camera open failed.")
                 throw RuntimeException()
             }
 
@@ -266,6 +262,25 @@ class Camera1ToSurfaceTextureActivity : Activity() {
         GLES20.glTexParameterf(target, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE.toFloat())
         checkNoGLES2Error("generateTexture")
         return textureId
+    }
+
+    private fun invokeAtFrontUninterruptibly(handler: Handler, callable: () -> Unit) {
+        var exceptionOccured: Exception? = null
+        val countDownLatch = CountDownLatch(1)
+        handler.post {
+            try {
+                callable()
+            } catch (e: Exception) {
+                exceptionOccured = e
+            } finally {
+                countDownLatch.countDown()
+            }
+        }
+
+        countDownLatch.await()
+        if (exceptionOccured != null) {
+            throw java.lang.RuntimeException(exceptionOccured)
+        }
     }
 
 }
