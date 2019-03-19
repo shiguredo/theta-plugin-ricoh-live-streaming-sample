@@ -22,9 +22,9 @@ import java.lang.RuntimeException
 
 
 @Suppress("DEPRECATION")
-class Camera2OnlyActivity : Activity() {
+class Camera2ToSurfaceViewActivity : Activity() {
     companion object {
-        private val TAG = Camera2OnlyActivity::class.simpleName
+        private val TAG = Camera2ToSurfaceViewActivity::class.simpleName
     }
 
     // Capture parameters
