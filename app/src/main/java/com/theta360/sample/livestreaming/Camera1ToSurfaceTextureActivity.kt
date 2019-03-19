@@ -74,7 +74,7 @@ class Camera1ToSurfaceTextureActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
-        eglBase = EglBase.create(null, CONFIG_PIXEL_RGBA_BUFFER_RECORDABLE)
+        eglBase = EglBase.create()
         eglBaseContext = eglBase!!.eglBaseContext
         setupTexture()
         setupThetaDevices()
@@ -88,6 +88,9 @@ class Camera1ToSurfaceTextureActivity : Activity() {
         camera?.release()
         camera = null
         surfaceTexture?.release()
+
+        textureCaptureThread?.quit()
+
         // Configures RICOH THETA's camera. This is not a general Android configuration.
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
         logD("Broadcast ACTION_MAIN_CAMERA_OPEN")
@@ -121,7 +124,7 @@ class Camera1ToSurfaceTextureActivity : Activity() {
             eglBase!!.makeCurrent();
         }
 
-        val oesTextureId = GlUtil.generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
+        val oesTextureId = generateTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
         var lastFrameCaptured = System.currentTimeMillis()
         val fpsIntervalFramesTarget = 30
         var fpsIntervalStart = lastFrameCaptured
