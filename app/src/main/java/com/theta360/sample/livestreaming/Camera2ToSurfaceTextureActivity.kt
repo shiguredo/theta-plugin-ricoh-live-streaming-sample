@@ -152,6 +152,11 @@ class Camera2ToSurfaceTextureActivity : Activity() {
             val outputs = listOf(surface)
             camera!!.createCaptureSession(outputs, captureSessionCallback,
                     cameraThreadHandler)
+
+            // This just fails by
+            // java.lang.IllegalArgumentException: Surface size 3840x1920 is not part of the high speed supported size list []
+            // camera!!.createConstrainedHighSpeedCaptureSession(
+            //         outputs, captureSessionCallback, cameraThreadHandler)
         }
 
         override fun onDisconnected(cameraDevice: CameraDevice) {
