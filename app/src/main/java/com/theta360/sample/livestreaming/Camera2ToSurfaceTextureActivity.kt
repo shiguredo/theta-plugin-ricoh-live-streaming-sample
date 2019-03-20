@@ -263,6 +263,7 @@ class Camera2ToSurfaceTextureActivity : Activity() {
             camera1Parameters.set("video-size", "3840x1920")
             camera1Parameters.setPreviewSize(3840, 1920)
             camera1.parameters = camera1Parameters
+            camera1.release()
         }
     }
 
