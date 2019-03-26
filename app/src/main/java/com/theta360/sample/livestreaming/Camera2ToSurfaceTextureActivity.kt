@@ -42,8 +42,10 @@ class Camera2ToSurfaceTextureActivity : Activity() {
     private var eglBase: EglBase? = null
     private var eglBaseContext: EglBase.Context? = null
 
+    private val singleBufferMode = false
     private var surfaceTexture: SurfaceTexture? = null
     private var surface: Surface? = null
+    private var transformMatrix = FloatArray(16)
 
     private var textureCaptureThread: HandlerThread? = null
     private var textureCaptureHandler: Handler? = null
@@ -65,6 +67,7 @@ class Camera2ToSurfaceTextureActivity : Activity() {
         SoraLogger.libjingle_enabled = true
 
         setContentView(R.layout.activity_empty)
+        transformMatrix.fill(0f)
    }
 
     override fun onResume() {
@@ -119,11 +122,15 @@ class Camera2ToSurfaceTextureActivity : Activity() {
         val fpsIntervalFramesTarget = 30
         var fpsIntervalStart = lastFrameCaptured
         var fpsIntervalFrames = 0
-        surfaceTexture = SurfaceTexture(oesTextureId)
+        surfaceTexture = SurfaceTexture(oesTextureId, singleBufferMode)
         surfaceTexture!!.setDefaultBufferSize(shootingMode.width, shootingMode.height)
         surfaceTexture!!.setOnFrameAvailableListener(
                 {_ ->
                     surfaceTexture!!.updateTexImage()
+                    surfaceTexture!!.getTransformMatrix(transformMatrix)
+                    if(singleBufferMode) {
+                        surfaceTexture!!.releaseTexImage()
+                    }
                     val current = System.currentTimeMillis()
                     Logging.d(TAG, "Camera image captured. interval=${current - lastFrameCaptured} msec")
                     lastFrameCaptured = current
