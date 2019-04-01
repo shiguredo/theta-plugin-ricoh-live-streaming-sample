@@ -82,7 +82,7 @@ class Camera2Sv2IrActivity : Activity() {
         surfaceView!!.holder.addCallback(object: SurfaceHolder.Callback {
             override fun surfaceCreated(surfaceHolder: SurfaceHolder) {
                 Logging.d(TAG, "surfaceCreated")
-                surfaceHolder.setFixedSize(shootingMode.width, shootingMode.width)
+                surfaceHolder.setFixedSize(shootingMode.width, shootingMode.height)
                 // startCamera()
             }
 

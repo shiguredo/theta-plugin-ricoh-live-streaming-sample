@@ -255,7 +255,7 @@ class Camera1ToSurfaceTextureActivity : Activity() {
             camera!!.parameters = parameters
             camera!!.setPreviewTexture(surfaceTexture)
             camera!!.startPreview()
-            camera!!.unlock()
+            // camera!!.unlock()
         }
     }
 
