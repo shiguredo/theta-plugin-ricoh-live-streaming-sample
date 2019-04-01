@@ -5,40 +5,20 @@ package com.theta360.sample.livestreaming
 
 import android.app.Activity
 import android.graphics.ImageFormat
-import android.graphics.SurfaceTexture
 import android.hardware.Camera
 import android.media.AudioManager
-import android.opengl.GLES11Ext
-import android.opengl.GLES20
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
-import android.view.Surface
-import org.webrtc.EglBase
-import java.util.concurrent.CountDownLatch
 import javax.microedition.khronos.egl.EGL10
 
+// TODO: This does NOT working at present.
 
 @Suppress("DEPRECATION")
 class Camera1ToPreviewCallbackActivity : Activity() {
     companion object {
         private val TAG = Camera1ToPreviewCallbackActivity::class.simpleName
-
-        private const val EGL_OPENGL_ES2_BIT = 4
-        // Android-specific extension.
-        private const val EGL_RECORDABLE_ANDROID = 0x3142
-
-        private val CONFIG_PIXEL_RGBA_BUFFER_RECORDABLE = intArrayOf(
-                EGL10.EGL_RED_SIZE, 8,
-                EGL10.EGL_GREEN_SIZE, 8,
-                EGL10.EGL_BLUE_SIZE, 8,
-                EGL10.EGL_ALPHA_SIZE, 8,
-                EGL10.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-                EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
-                EGL_RECORDABLE_ANDROID, 1,
-                EGL10.EGL_NONE
-        )
 
         private fun logD(message: String) {
             Log.d(TAG, message)
@@ -46,19 +26,17 @@ class Camera1ToPreviewCallbackActivity : Activity() {
     }
 
     // Capture parameters
-    // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_PREVIEW_3840
-    private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
-    // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
-    // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
-    // private val shootingMode = ThetaCapturer.ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
-    // private val shootingMode = ThetaCapturer.ShootingMode.RIC_STILL_PREVIEW_1920
+    private val shootingMode = ShootingMode.RIC_MOVIE_PREVIEW_640
+    // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
+    // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
+    // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
+    // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
+    // private val shootingMode = ShootingMode.RIC_STILL_PREVIEW_1920
     private val frameRate = 30
 
     private var camera: Camera? = null;
-    private val captureBufferCount = 3
-
-    private var captureThread: HandlerThread? = null
-    private var captureHandler: Handler? = null
+    private val captureBufferCount = 1
+    private val captureWithBuffer = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,18 +47,16 @@ class Camera1ToPreviewCallbackActivity : Activity() {
         super.onResume()
 
         setupThetaDevices()
-        setupThread()
         startCamera()
     }
 
     override fun onPause() {
         super.onPause()
 
+        camera?.setPreviewCallbackWithBuffer(null)
         camera?.stopPreview()
         camera?.release()
         camera = null
-
-        captureThread?.quit()
 
         // Configures RICOH THETA's camera. This is not a general Android configuration.
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
@@ -101,21 +77,11 @@ class Camera1ToPreviewCallbackActivity : Activity() {
         ThetaCapturer.actionMainCameraClose(applicationContext)
     }
 
-    private fun setupThread() {
-        val threadName = "capture-handler-thread"
-        captureThread = HandlerThread(threadName)
-        captureThread!!.start()
-        captureHandler = Handler(captureThread!!.getLooper())
-    }
-
     private fun startCamera() {
         Log.d(TAG, "startCamera")
-        val threadName = "camera-handler-thread"
-        val thread = HandlerThread(threadName)
-        thread.start()
-        val handler = Handler(thread.getLooper())
+        val handler = Handler()
 
-       handler.post {
+        handler.post {
             val cameraId= 0;
 
             for (i in 1..10) {
@@ -133,6 +99,7 @@ class Camera1ToPreviewCallbackActivity : Activity() {
                 logD("Camera open failed.")
                 throw RuntimeException()
             }
+            camera!!.stopPreview()
 
             val parameters = camera!!.parameters
 
@@ -154,22 +121,22 @@ class Camera1ToPreviewCallbackActivity : Activity() {
             // Any effect? At least, it seems do no harm.
             // parameters.set("video-size", shootingMode.getVideoSize());
             // parameters.set("video-size", "5376x2688");
-            parameters.set("video-size", "3840x1920")
+            // parameters.set("video-size", "3840x1920")
 
-            parameters.setPreviewSize(3840, 1920)
+            // parameters.setPreviewSize(3840, 1920)
             // parameters.setPreviewSize(640, 480)
             // parameters.setPreviewSize(5376, 2688)
 
             // If recording-hint is set to true, camera become frozen.
-            parameters.set("recording-hint", "true");
+            // parameters.set("recording-hint", "true");
             // It seems the same as "recording-hint" above. Do not set this true.
             // parameters.setRecordingHint(true)
 
             // parameters.set("secure-mode", "disable")
             // parameters.set("zsl", 1)
 
-            // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-            parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
+            parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+            // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
             // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
             // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
             // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
@@ -201,43 +168,38 @@ class Camera1ToPreviewCallbackActivity : Activity() {
             if (parameters.isVideoStabilizationSupported) {
                 // parameters.videoStabilization = true
             }
+
             // if (focusModes.contains(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
             //     parameters.setFocusMode(android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
             // }
 
-           camera!!.parameters = parameters
+            logD("Original preview format=${parameters.previewFormat}")
+            parameters.previewFormat = ImageFormat.NV21
+            camera!!.parameters = parameters
 
-
-           val previewFormat = ImageFormat.NV21
-           for (i in 1..captureBufferCount) {
-               val buffer = ByteArray(1920 * 1080 * ImageFormat.getBitsPerPixel(previewFormat) / 8)
-               camera!!.addCallbackBuffer(buffer)
-           }
-
-           camera!!.setPreviewCallbackWithBuffer { buffer, camera ->
-               camera.addCallbackBuffer(buffer)
-           }
-           camera!!.startPreview()
-           camera!!.unlock()
-        }
-    }
-
-    private fun invokeAtFrontUninterruptibly(handler: Handler, callable: () -> Unit) {
-        var exceptionOccurred: Exception? = null
-        val countDownLatch = CountDownLatch(1)
-        handler.post {
-            try {
-                callable()
-            } catch (e: Exception) {
-                exceptionOccurred = e
-            } finally {
-                countDownLatch.countDown()
+            val previewSize = parameters.previewSize
+            logD("previewSize width=${previewSize.width}, height=${previewSize.height}")
+            val bufferSize = previewSize.width * previewSize.height *
+                    ImageFormat.getBitsPerPixel(parameters.previewFormat) / 2
+            if (captureWithBuffer) {
+                for (i in 1..captureBufferCount) {
+                    val buffer = ByteArray(bufferSize)
+                    logD("preview buffer added: index=${i}, buffer=${buffer}")
+                    camera!!.addCallbackBuffer(buffer)
+                }
+                camera!!.setPreviewCallbackWithBuffer { buffer, camera ->
+                    logD("previewCallback with buffer called: buffer=${buffer}")
+                    camera.addCallbackBuffer(buffer)
+                }
+            } else {
+                camera!!.setPreviewCallback {data, camera ->
+                    logD("previewCallback called: data=${data}")
+                }
             }
-        }
 
-        countDownLatch.await()
-        if (exceptionOccurred != null) {
-            throw java.lang.RuntimeException(exceptionOccurred)
+            camera!!.startPreview()
+            logD("camera preview started.")
+            // camera!!.unlock()
         }
     }
 
