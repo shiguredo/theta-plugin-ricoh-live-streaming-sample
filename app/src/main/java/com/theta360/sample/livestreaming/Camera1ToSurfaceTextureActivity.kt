@@ -58,6 +58,10 @@ class Camera1ToSurfaceTextureActivity : Activity() {
     private var eglBase: EglBase? = null
     private var eglBaseContext: EglBase.Context? = null
 
+    // single buffer mode does NOT work with camera1
+    //   [SurfaceTexture-0-6448-0] setMaxDequeuedBufferCount: 5 dequeued buffers would exceed the maxBufferCount (1)
+    //   (maxAcquired 1 async 0 mDequeuedBufferCannotBlock 0)
+    private val singleBufferMode = false
     private var surfaceTexture: SurfaceTexture? = null
     private var surface: Surface? = null
 
@@ -127,13 +131,16 @@ class Camera1ToSurfaceTextureActivity : Activity() {
         val fpsIntervalFramesTarget = 30
         var fpsIntervalStart = lastFrameCaptured
         var fpsIntervalFrames = 0
-        surfaceTexture = SurfaceTexture(oesTextureId)
+        surfaceTexture = SurfaceTexture(oesTextureId, singleBufferMode)
         surfaceTexture!!.setDefaultBufferSize(shootingMode.width, shootingMode.height)
         surfaceTexture!!.setOnFrameAvailableListener(
                 {_ ->
                     surfaceTexture!!.updateTexImage()
+                    if(singleBufferMode) {
+                        surfaceTexture!!.releaseTexImage()
+                    }
                     val current = System.currentTimeMillis()
-                    // logD("Camera image captured. interval=${current - lastFrameCaptured} msec")
+                    logD("SurfaceTexture frame available. interval=${current - lastFrameCaptured} msec")
                     lastFrameCaptured = current
                     if (fpsIntervalFrames != fpsIntervalFramesTarget) {
                         fpsIntervalFrames++
