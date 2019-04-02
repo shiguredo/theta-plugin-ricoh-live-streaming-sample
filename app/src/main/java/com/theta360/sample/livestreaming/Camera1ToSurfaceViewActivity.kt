@@ -49,7 +49,7 @@ class Camera1ToSurfaceViewActivity : Activity() {
     private var camera: Camera? = null
     private val captureWithBuffer = true
     private val captureBufferCount = 1
-    private val bufferReleaseDelayMSec = 10L
+    private val bufferReleaseDelayMSec = 0L
 
     private var surfaceView: SurfaceView? = null
 
