@@ -36,13 +36,20 @@ class Camera1ToSurfaceViewActivity : Activity() {
     // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_2K_EQUI
     // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_2K_DUAL
     // private val shootingMode = ShootingMode.RIC_STILL_PREVIEW_1920
+
+    // private val stitchingMode = "RicNonStitching"
+    private val stitchingMode = "RicStaticStitching"
+
     private val frameRate = 30
 
     private var cameraThread: HandlerThread? = null
+    private var releaseThread: HandlerThread? = null
+    private var releaseThreadHandler: Handler? = null
 
     private var camera: Camera? = null
-    private val captureBufferCount = 4
     private val captureWithBuffer = true
+    private val captureBufferCount = 1
+    private val bufferReleaseDelayMSec = 10L
 
     private var surfaceView: SurfaceView? = null
 
@@ -107,6 +114,7 @@ class Camera1ToSurfaceViewActivity : Activity() {
         ThetaCapturer.actionMainCameraOpen(applicationContext)
 
         cameraThread?.quit()
+        releaseThread?.quit()
 
         super.onPause()
     }
@@ -126,24 +134,49 @@ class Camera1ToSurfaceViewActivity : Activity() {
 
     private val previewCallback = object: Camera.PreviewCallback {
         var lastCapturedMillis = System.currentTimeMillis()
-        val fpsIntervalFramesTarget = 30
+        val fpsIntervalFramesTarget = 10
         var fpsIntervalStartMills = lastCapturedMillis
         var fpsIntervalFrames = 0
+
+        val fpsSummaryFramesTarget = 100
+        var fpsSummaryStartMillis = lastCapturedMillis
+        var fpsSummaryFrames = 0
+        var fpsSummaryWarmUpFrames = 5
 
         override fun onPreviewFrame(byteArray: ByteArray?, camera: Camera?) {
             val currentMillis = System.currentTimeMillis()
             Logging.d(TAG, "PreviewCallback.onPreviewFrame: interval=${currentMillis - lastCapturedMillis} [msec], byteArray=${byteArray}")
 
             if (captureWithBuffer) {
-                camera!!.addCallbackBuffer(byteArray)
+                if (bufferReleaseDelayMSec == 0L) {
+                    camera!!.addCallbackBuffer(byteArray)
+                } else {
+                    releaseThreadHandler!!.postDelayed({camera!!.addCallbackBuffer(byteArray)},
+                            bufferReleaseDelayMSec)
+                }
             }
             lastCapturedMillis = currentMillis
-            if (fpsIntervalFrames != fpsIntervalFramesTarget) {
-                fpsIntervalFrames++
-            } else {
+            fpsIntervalFrames++
+            if (fpsIntervalFrames == fpsIntervalFramesTarget) {
                 Logging.d(TAG, "%.1f FPS".format(1000.0*fpsIntervalFramesTarget/(currentMillis - fpsIntervalStartMills)))
                 fpsIntervalFrames = 0
                 fpsIntervalStartMills = currentMillis
+            }
+
+            if (fpsSummaryWarmUpFrames > 0) {
+                fpsSummaryWarmUpFrames--
+                if(fpsSummaryWarmUpFrames == 0) {
+                    fpsSummaryStartMillis = currentMillis
+                }
+                return
+            }
+
+            fpsSummaryFrames++
+            if (fpsSummaryFrames == fpsSummaryFramesTarget) {
+                val fps = 1000.0*fpsSummaryFramesTarget/(currentMillis - fpsSummaryStartMillis)
+                Logging.d(TAG, "Summary: %.1f FPS, %.1f [msec/frame]".format(fps, 1000.0/fps))
+                fpsSummaryFrames = 0
+                fpsSummaryStartMillis = currentMillis
             }
         }
     }
@@ -151,10 +184,14 @@ class Camera1ToSurfaceViewActivity : Activity() {
 
     private fun startCamera() {
         logD("startCamera")
-        val threadName = "camera-handler-thread"
-        cameraThread = HandlerThread(threadName)
+        cameraThread = HandlerThread("camera-thread")
         cameraThread!!.start()
-        val cameraThreadHandler = Handler(cameraThread!!.getLooper())
+
+        releaseThread = HandlerThread("buffer-release-thread")
+        releaseThread!!.start()
+        releaseThreadHandler = Handler(releaseThread!!.looper)
+
+        val cameraThreadHandler = Handler(cameraThread!!.looper)
 
         camera!!.stopPreview()
 
@@ -194,11 +231,7 @@ class Camera1ToSurfaceViewActivity : Activity() {
             // parameters.set("secure-mode", "disable")
             // parameters.set("zsl", 1)
 
-            // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-            parameters.set("RIC_PROC_STITCHING", "RicStaticStitching")
-            // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
-            // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
-            // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
+            parameters.set("RIC_PROC_STITCHING", stitchingMode)
 
             // parameters.set("RIC_EXPOSURE_MODE", "RicManualExposure");
             // parameters.set("RIC_EXPOSURE_MODE", "RicAutoExposureP");
