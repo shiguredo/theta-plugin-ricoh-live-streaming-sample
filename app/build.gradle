@@ -50,7 +50,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 
     // Sora Android SDK
-    api("com.github.shiguredo:sora-android-sdk:1.8.0") {
+    api("com.github.shiguredo:sora-android-sdk:develop-SNAPSHOT") {
         transitive = true
     }
     // api project(':sora-android-sdk')
