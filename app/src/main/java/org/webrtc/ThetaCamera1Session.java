@@ -172,13 +172,13 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-      parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
+      // parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
       // What are these numbers?
-      // parameters.setPreviewSize(5376, 2688);
+      parameters.setPreviewSize(5376, 2688);
 
       // No need for this? I guess only preview is used.
       // Almost marginal but maybe slightly better FPS when set.
-      parameters.setPictureSize(pictureSize.width, pictureSize.height);
+      // parameters.setPictureSize(pictureSize.width, pictureSize.height);
       // parameters.setPictureSize(5376, 2688);
 
       if (!captureToTexture) {
