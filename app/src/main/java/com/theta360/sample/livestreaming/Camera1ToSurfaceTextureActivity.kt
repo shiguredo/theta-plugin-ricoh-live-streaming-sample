@@ -142,9 +142,8 @@ class Camera1ToSurfaceTextureActivity : Activity() {
                     val current = System.currentTimeMillis()
                     logD("SurfaceTexture frame available. interval=${current - lastFrameCaptured} msec")
                     lastFrameCaptured = current
-                    if (fpsIntervalFrames != fpsIntervalFramesTarget) {
-                        fpsIntervalFrames++
-                    } else {
+                    fpsIntervalFrames++
+                    if (fpsIntervalFrames == fpsIntervalFramesTarget) {
                         logD("SurfaceTexture: %.1f FPS".format(1000.0*fpsIntervalFramesTarget/(current - fpsIntervalStart)))
                         fpsIntervalFrames = 0
                         fpsIntervalStart = current
