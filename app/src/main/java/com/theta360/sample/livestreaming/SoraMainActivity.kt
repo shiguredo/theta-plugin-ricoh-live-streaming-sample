@@ -7,6 +7,8 @@ import android.app.Activity
 import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
+import com.theta360.pluginlibrary.receiver.KeyReceiver
 import jp.shiguredo.sora.sdk.channel.SoraMediaChannel
 import jp.shiguredo.sora.sdk.channel.option.SoraMediaOption
 import jp.shiguredo.sora.sdk.channel.option.SoraVideoOption
@@ -14,6 +16,9 @@ import jp.shiguredo.sora.sdk.channel.signaling.message.PushMessage
 import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
+import android.content.IntentFilter
+
+
 
 
 class SoraMainActivity : Activity() {
@@ -42,6 +47,30 @@ class SoraMainActivity : Activity() {
 
     private var channel: SoraMediaChannel? = null
 
+    private var autoPublish = false
+    private val publishingStateLock = Any()
+    private var publishing = false
+    private val keyReceiverCallback : KeyReceiver.Callback = object : KeyReceiver.Callback {
+        override fun onKeyDownCallback(keyCode: Int, event: KeyEvent?) {
+            SoraLogger.d(TAG, "onKeyDown: keyCode=${keyCode}")
+            when (keyCode) {
+                KeyReceiver.KEYCODE_CAMERA ->
+                    synchronized(publishingStateLock) {
+                        if (publishing) {
+                            close()
+                        } else {
+                            startChannel()
+                        }
+                    }
+            }
+        }
+
+        override fun onKeyUpCallback(keyCode: Int, event: KeyEvent?) {
+            // nop
+        }
+    }
+    private val keyReceiver = KeyReceiver(keyReceiverCallback)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -51,6 +80,11 @@ class SoraMainActivity : Activity() {
         setContentView(R.layout.activity_main)
         localView = findViewById(R.id.local_view)
 
+        val keyFilter = IntentFilter()
+        keyFilter.addAction(KeyReceiver.ACTION_KEY_DOWN)
+        keyFilter.addAction(KeyReceiver.ACTION_KEY_UP)
+        registerReceiver(keyReceiver, keyFilter)
+
         eglBase = EglBase.create()
         // localView!!.init(eglBase!!.eglBaseContext, null)
     }
@@ -58,7 +92,9 @@ class SoraMainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         setupThetaDevices()
-        startChannel()
+        if (autoPublish) {
+            startChannel()
+        }
     }
 
     private fun setupThetaDevices() {
@@ -77,26 +113,26 @@ class SoraMainActivity : Activity() {
     private val channelListener = object : SoraMediaChannel.Listener {
 
         override fun onConnect(mediaChannel: SoraMediaChannel) {
-            Log.d(TAG, "onConnect")
+            Log.d(TAG, "channelListenr.onConnect")
         }
 
         override fun onClose(mediaChannel: SoraMediaChannel) {
-            Log.d(TAG, "onClose")
+            Log.d(TAG, "channelListenr.onClose")
             close()
         }
 
         override fun onError(mediaChannel: SoraMediaChannel, reason: SoraErrorReason) {
-            Log.e(TAG, "onError: ${reason}")
+            Log.e(TAG, "channelListenr.onError: ${reason}")
             close()
         }
 
         override fun onAddRemoteStream(mediaChannel: SoraMediaChannel, ms: MediaStream) {
-            Log.d(TAG, "onAddRemoteStream")
+            Log.d(TAG, "channelListenr.onAddRemoteStream")
             // nop
         }
 
         override fun onAddLocalStream(mediaChannel: SoraMediaChannel, ms: MediaStream) {
-            Log.d(TAG, "onAddLocalStream")
+            Log.d(TAG, "channelListenr.onAddLocalStream")
             runOnUiThread {
                 if (ms.videoTracks.size > 0) {
                     // val track = ms.videoTracks[0]
@@ -119,6 +155,10 @@ class SoraMainActivity : Activity() {
 
     private fun startChannel() {
         Log.d(TAG, "startChannel")
+
+        synchronized(publishingStateLock) {
+            publishing = true
+        }
 
         val camera1Enumerator = Camera1Enumerator()
         val deviceNames = camera1Enumerator.deviceNames
@@ -158,6 +198,10 @@ class SoraMainActivity : Activity() {
     }
 
     private fun close() {
+        synchronized(publishingStateLock) {
+            publishing = false
+        }
+
         channel?.disconnect()
         channel = null
 

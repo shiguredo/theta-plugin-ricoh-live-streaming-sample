@@ -37,6 +37,10 @@ android {
     }
 }
 
+repositories {
+    maven { url 'https://github.com/ricohapi/theta-plugin-library/raw/master/repository' }
+}
+
 dependencies {
     implementation 'com.squareup.okhttp3:okhttp:3.12.1'
     compileOnly 'javax.json:javax.json-api:1.0'   // v1.1 or higher does not work on Android
@@ -49,13 +53,18 @@ dependencies {
 
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 
-    // Sora Android SDK
-    api("com.github.shiguredo:sora-android-sdk:develop-SNAPSHOT") {
-        transitive = true
-    }
-    // api project(':sora-android-sdk')
+    implementation 'com.theta360:pluginlibrary:2.0.0'
 
-    // implementation "org.webrtc:google-webrtc:${libwebrtc_version}"
+    // Sora Android SDK
+    if (findProject(':sora-android-sdk') != null) {
+        // module is included
+        api project(':sora-android-sdk')
+    } else {
+        // external dependency
+        api("com.github.shiguredo:sora-android-sdk:develop-SNAPSHOT") {
+            transitive = true
+        }
+    }
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
