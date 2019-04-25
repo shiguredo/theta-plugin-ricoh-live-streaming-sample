@@ -47,7 +47,7 @@ class SoraMainActivity : Activity() {
 
     private var channel: SoraMediaChannel? = null
 
-    private var autoPublish = false
+    private var autoPublish = true
     private val publishingStateLock = Any()
     private var publishing = false
     private val keyReceiverCallback : KeyReceiver.Callback = object : KeyReceiver.Callback {
