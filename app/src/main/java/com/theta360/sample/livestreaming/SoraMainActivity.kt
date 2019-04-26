@@ -18,9 +18,6 @@ import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
 import android.content.IntentFilter
 
-
-
-
 class SoraMainActivity : Activity() {
     companion object {
         private val TAG = SoraMainActivity::class.simpleName
