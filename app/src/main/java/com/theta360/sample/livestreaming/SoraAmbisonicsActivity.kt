@@ -17,6 +17,7 @@ import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
 import android.content.IntentFilter
+import jp.shiguredo.sora.sdk.channel.option.SoraAudioOption
 
 class SoraAmbisonicsActivity : Activity() {
     companion object {
@@ -99,9 +100,17 @@ class SoraAmbisonicsActivity : Activity() {
         // see https://api.ricoh/docs/theta-plugin-reference/audio-manager-api/
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
 
-        // recording in monaural
-        (getSystemService(AUDIO_SERVICE) as AudioManager)
-                .setParameters("RicUseBFormat=false")
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        val useAmbisonics = false
+        if(useAmbisonics) {
+            // Try ambisonics
+            audioManager.setParameters("RicUseBFormat=true")
+            audioManager.setParameters("RicMicSurroundVolumeLevel=RicMicSurroundVolumeLevelNormal")
+            audioManager.setParameters("RicMicSelect=RicMicSelectAuto");
+        } else {
+            audioManager.setParameters("RicUseBFormat=false")
+        }
+
         // Prepare to use camera
         SoraLogger.d(TAG, "Broadcast ACTION_MAIN_CAMERA_CLOSE")
         ThetaCapturer.actionMainCameraClose(applicationContext)
@@ -110,7 +119,7 @@ class SoraAmbisonicsActivity : Activity() {
     private val channelListener = object : SoraMediaChannel.Listener {
 
         override fun onConnect(mediaChannel: SoraMediaChannel) {
-            Log.d(TAG, "channelListenr.onConnect")
+            Log.d(TAG, "channelListener.onConnect")
         }
 
         override fun onClose(mediaChannel: SoraMediaChannel) {
@@ -175,8 +184,8 @@ class SoraAmbisonicsActivity : Activity() {
                 true /* enableIntelVp8Encoder */,
                 false /* enableH264HighProfile */)
         val option = SoraMediaOption().apply {
-            // enableAudioUpstream()
-            // audioCodec = SoraAudioOption.Codec.OPUS
+            enableAudioUpstream()
+            audioCodec = SoraAudioOption.Codec.OPUS
 
             enableVideoUpstream(capturer!!, eglBase!!.eglBaseContext)
             videoCodec = codec
