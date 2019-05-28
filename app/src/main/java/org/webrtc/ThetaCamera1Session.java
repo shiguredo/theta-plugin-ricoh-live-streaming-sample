@@ -145,14 +145,14 @@ class ThetaCamera1Session implements CameraSession {
       parameters.set("RIC_SHOOTING_MODE", shootingMode.getValue());
       // Any effect? At least, it seems do no harm.
       // parameters.set("video-size", shootingMode.getVideoSize());
-      parameters.set("video-size", "5376x2688");
+      // parameters.set("video-size", "5376x2688");
       // If recording-hint is set to true, camera become frozen.
       // parameters.set("recording-hint", "false");
       // It seems the same as "recording-hint" above. Do not set this true.
       parameters.setRecordingHint(false);
 
-      parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-      // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
+      // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+      parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
@@ -172,9 +172,9 @@ class ThetaCamera1Session implements CameraSession {
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_FRONT", 0);
       // parameters.set("RIC_MANUAL_EXPOSURE_TIME_REAR", 0);
 
-      // parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
+      parameters.setPreviewSize(shootingMode.getWidth(), shootingMode.getHeight());
       // What are these numbers?
-      parameters.setPreviewSize(5376, 2688);
+      // parameters.setPreviewSize(5376, 2688);
 
       // No need for this? I guess only preview is used.
       // Almost marginal but maybe slightly better FPS when set.

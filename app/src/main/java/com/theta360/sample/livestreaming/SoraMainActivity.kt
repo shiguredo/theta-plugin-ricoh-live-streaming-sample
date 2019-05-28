@@ -72,7 +72,7 @@ class SoraMainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         SoraLogger.enabled = true
-        SoraLogger.libjingle_enabled = true
+        SoraLogger.libjingle_enabled = false
 
         setContentView(R.layout.activity_main)
         localView = findViewById(R.id.local_view)
