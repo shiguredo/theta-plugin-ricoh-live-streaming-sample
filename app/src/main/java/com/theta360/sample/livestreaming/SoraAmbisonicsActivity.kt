@@ -101,7 +101,7 @@ class SoraAmbisonicsActivity : Activity() {
         // see https://api.ricoh/docs/theta-plugin-reference/broadcast-intent/#notifying-camera-device-control
 
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        val useAmbisonics = false
+        val useAmbisonics = true
         if(useAmbisonics) {
             // Try ambisonics
             audioManager.setParameters("RicUseBFormat=true")
