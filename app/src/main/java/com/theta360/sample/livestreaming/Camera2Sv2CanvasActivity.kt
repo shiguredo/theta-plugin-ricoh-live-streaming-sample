@@ -172,7 +172,7 @@ class Camera2Sv2CanvasActivity : Activity() {
             captureRequestBuilder.addTarget(surfaceView!!.holder.surface)
 
             captureRequest = captureRequestBuilder.build()
-            session.setRepeatingRequest(captureRequest, captureCallback, Handler())
+            session.setRepeatingRequest(captureRequest!!, captureCallback, Handler())
         }
 
         override fun onConfigureFailed(session: CameraCaptureSession) {

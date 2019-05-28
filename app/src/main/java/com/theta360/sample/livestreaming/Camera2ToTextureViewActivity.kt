@@ -192,7 +192,7 @@ class Camera2ToTextureViewActivity : Activity() {
             // captureRequestBuilder.set(CaptureRequest.Key("RIC_SHOOTING_MODE", String), "RicMovieRecording4kEqui")
 
             captureRequest = captureRequestBuilder.build()
-            session.setRepeatingRequest(captureRequest, captureCallback, mainHandler)
+            session.setRepeatingRequest(captureRequest!!, captureCallback, mainHandler)
         }
 
         override fun onConfigureFailed(session: CameraCaptureSession) {

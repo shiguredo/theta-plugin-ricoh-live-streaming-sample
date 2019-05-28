@@ -197,7 +197,7 @@ class Camera2Sv2IrActivity : Activity() {
             }
 
             captureRequest = captureRequestBuilder.build()
-            session.setRepeatingRequest(captureRequest, captureCallback, Handler())
+            session.setRepeatingRequest(captureRequest!!, captureCallback, Handler())
         }
 
         override fun onConfigureFailed(session: CameraCaptureSession) {

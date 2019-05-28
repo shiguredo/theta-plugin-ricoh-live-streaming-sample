@@ -284,7 +284,7 @@ class Camera2ToEncodeActivity : Activity() {
             }
 
             captureRequest = captureRequestBuilder.build()
-            session.setRepeatingRequest(captureRequest, captureCallback, Handler())
+            session.setRepeatingRequest(captureRequest!!, captureCallback, Handler())
         }
 
         override fun onConfigureFailed(session: CameraCaptureSession) {

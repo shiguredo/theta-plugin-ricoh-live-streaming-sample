@@ -30,6 +30,7 @@ class Camera1ToSurfaceViewActivity : Activity() {
 
     // Capture parameters
     // private val shootingMode = ShootingMode.RIC_MOVIE_PREVIEW_3840
+    // private val shootingMode = ShootingMode.RIC_MOVIE_PREVIEW_1920
     // private val shootingMode = ShootingMode.RIC_MOVIE_PREVIEW_640
     private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_EQUI
     // private val shootingMode = ShootingMode.RIC_MOVIE_RECORDING_4K_DUAL
