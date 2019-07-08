@@ -282,7 +282,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
           format, null /* surface */, null /* crypto */, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
       if (useSurfaceMode) {
-        textureEglBase = new EglBase14(sharedContext, EglBase.CONFIG_RECORDABLE);
+        textureEglBase = EglBase.createEgl14(sharedContext, EglBase.CONFIG_RECORDABLE);
         // textureEglBase = new EglBase14(sharedContext, CONFIG_RECORDABLE_PIXEL_RGBA_BUFFER);
         // textureEglBase = new EglBase14(sharedContext, CONFIG_RECORDABLE_RGBA_BUFFER);
         textureInputSurface = codec.createInputSurface();
