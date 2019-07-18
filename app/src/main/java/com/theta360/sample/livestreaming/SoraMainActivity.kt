@@ -17,6 +17,7 @@ import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
 import android.content.IntentFilter
+import jp.shiguredo.sora.sdk.channel.option.PeerConnectionOption
 
 class SoraMainActivity : Activity() {
     companion object {
@@ -37,6 +38,9 @@ class SoraMainActivity : Activity() {
     // signaling parameters for video
     private val bitRate = 15000
     private val codec = SoraVideoOption.Codec.H264
+
+    private val getStatsIntervalMSec = 5000L
+    private val statsCollector = VideoUpstreamLatencyStatsCollector()
 
     private var localView: SurfaceViewRenderer? = null
     private var capturer: VideoCapturer? = null
@@ -148,6 +152,10 @@ class SoraMainActivity : Activity() {
             //     }
             // }
         }
+
+        override fun onPeerConnectionStatsReady(mediaChannel: SoraMediaChannel, statsReport: RTCStatsReport) {
+            statsCollector.newStatsReport(statsReport)
+        }
     }
 
     private fun startChannel() {
@@ -185,12 +193,17 @@ class SoraMainActivity : Activity() {
             videoEncoderFactory = thetaVideoEncoderFactory
         }
 
+        val peerConnectionOption = PeerConnectionOption().apply {
+            getStatsIntervalMSec = this@SoraMainActivity.getStatsIntervalMSec
+        }
+
         channel = SoraMediaChannel(
-                context           = this,
-                signalingEndpoint = BuildConfig.SIGNALING_ENDPOINT,
-                channelId         = BuildConfig.CHANNEL_ID,
-                mediaOption       = option,
-                listener          = channelListener)
+                context              = this,
+                signalingEndpoint    = BuildConfig.SIGNALING_ENDPOINT,
+                channelId            = BuildConfig.CHANNEL_ID,
+                mediaOption          = option,
+                listener             = channelListener,
+                peerConnectionOption = peerConnectionOption)
         channel!!.connect()
     }
 
