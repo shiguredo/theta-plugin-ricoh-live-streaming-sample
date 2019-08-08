@@ -81,7 +81,7 @@ dependencies {
         api project(':sora-android-sdk')
     } else {
         // external dependency
-        api("com.github.shiguredo:sora-android-sdk:develop-SNAPSHOT") {
+        api("com.github.shiguredo:sora-android-sdk:feature~event-tracing-SNAPSHOT") {
             transitive = true
         }
     }
