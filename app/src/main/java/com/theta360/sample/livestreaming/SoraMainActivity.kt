@@ -17,7 +17,10 @@ import jp.shiguredo.sora.sdk.error.SoraErrorReason
 import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
 import android.content.IntentFilter
+import android.os.Environment
+import android.os.Handler
 import jp.shiguredo.sora.sdk.channel.option.PeerConnectionOption
+import java.io.File
 
 class SoraMainActivity : Activity() {
     companion object {
@@ -34,6 +37,7 @@ class SoraMainActivity : Activity() {
 
     private val frameRate = 30
     private val maintainsResolution = true
+    private val useLibwebrtcInternalTracer = true
 
     // signaling parameters for video
     private val bitRate = 15000
@@ -42,6 +46,7 @@ class SoraMainActivity : Activity() {
     private val getStatsIntervalMSec = 5000L
     private val statsCollector = VideoUpstreamLatencyStatsCollector()
 
+    private var handler: Handler? = null
     private var localView: SurfaceViewRenderer? = null
     private var capturer: VideoCapturer? = null
     private var eglBase: EglBase? = null
@@ -76,8 +81,9 @@ class SoraMainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         SoraLogger.enabled = true
-        SoraLogger.libjingle_enabled = false
+        SoraLogger.libjingle_enabled = true
 
+        handler = Handler()
         setContentView(R.layout.activity_main)
         localView = findViewById(R.id.local_view)
 
@@ -114,7 +120,17 @@ class SoraMainActivity : Activity() {
     private val channelListener = object : SoraMediaChannel.Listener {
 
         override fun onConnect(mediaChannel: SoraMediaChannel) {
-            Log.d(TAG, "channelListenr.onConnect")
+            Log.d(TAG, "channelListener.onConnect")
+            if (useLibwebrtcInternalTracer) {
+                handler?.post {
+                    val traceFilePath = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                            "sora-webrtc-trace.txt").absolutePath
+                    SoraMediaChannel.startTracer(traceFilePath)
+                }
+                handler?.postDelayed({
+                    SoraMediaChannel.stopTracer()
+                }, 10000)
+            }
         }
 
         override fun onClose(mediaChannel: SoraMediaChannel) {
@@ -195,6 +211,7 @@ class SoraMainActivity : Activity() {
 
         val peerConnectionOption = PeerConnectionOption().apply {
             getStatsIntervalMSec = this@SoraMainActivity.getStatsIntervalMSec
+            useLibwebrtcInternalTracer = this@SoraMainActivity.useLibwebrtcInternalTracer
         }
 
         channel = SoraMediaChannel(
