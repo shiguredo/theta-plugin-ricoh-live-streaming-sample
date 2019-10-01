@@ -18,6 +18,8 @@ import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
 import android.content.IntentFilter
 import jp.shiguredo.sora.sdk.channel.option.PeerConnectionOption
+import jp.shiguredo.sora.sdk.channel.option.SoraAudioOption
+import org.appspot.apprtc.AppRTCAudioManager
 
 class SoraMainActivity : Activity() {
     companion object {
@@ -46,9 +48,11 @@ class SoraMainActivity : Activity() {
     private var capturer: VideoCapturer? = null
     private var eglBase: EglBase? = null
 
+    private var apprtcAudioManager: AppRTCAudioManager? = null
+
     private var channel: SoraMediaChannel? = null
 
-    private var autoPublish = true
+    private var autoPublish = false
     private val publishingStateLock = Any()
     private var publishing = false
     private val keyReceiverCallback : KeyReceiver.Callback = object : KeyReceiver.Callback {
@@ -93,9 +97,23 @@ class SoraMainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         setupThetaDevices()
+
+        apprtcAudioManager = AppRTCAudioManager.create(applicationContext)
+        apprtcAudioManager?.start { audioDevice: AppRTCAudioManager.AudioDevice,
+                                    availableAudioDevices: Set<AppRTCAudioManager.AudioDevice> ->
+            SoraLogger.d(TAG, "onAudioDeviceChanged: ${audioDevice}")
+        }
+
         if (autoPublish) {
             startChannel()
         }
+    }
+
+    override fun onPause() {
+        Log.d(TAG, "onPause")
+        super.onPause()
+        apprtcAudioManager?.stop()
+        close()
     }
 
     private fun setupThetaDevices() {
@@ -183,14 +201,17 @@ class SoraMainActivity : Activity() {
                 true /* enableIntelVp8Encoder */,
                 false /* enableH264HighProfile */)
         val option = SoraMediaOption().apply {
-            // enableAudioUpstream()
-            // audioCodec = SoraAudioOption.Codec.OPUS
+            enableAudioUpstream()
+            audioCodec = SoraAudioOption.Codec.OPUS
 
             enableVideoUpstream(capturer!!, eglBase!!.eglBaseContext)
             videoCodec = codec
             videoBitrate = bitRate
             enableCpuOveruseDetection = false
             videoEncoderFactory = thetaVideoEncoderFactory
+
+            // enableVideoDownstream(eglBase!!.eglBaseContext)
+            // enableAudioDownstream()
         }
 
         val peerConnectionOption = PeerConnectionOption().apply {
