@@ -151,8 +151,8 @@ class ThetaCamera1Session implements CameraSession {
       // It seems the same as "recording-hint" above. Do not set this true.
       // parameters.setRecordingHint(true);
 
-      parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
-      // parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
+      // parameters.set("RIC_PROC_STITCHING", "RicNonStitching");
+      parameters.set("RIC_PROC_STITCHING", "RicStaticStitching");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingAuto");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingSave");
       // parameters.set("RIC_PROC_STITCHING", "RicDynamicStitchingLoad");
