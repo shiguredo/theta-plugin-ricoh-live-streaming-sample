@@ -2,10 +2,12 @@
 
 package com.theta360.sample.livestreaming
 
-import okhttp3.MediaType
+
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.MediaType.Companion.toMediaType
+
 import java.net.URI
 import javax.json.Json
 import javax.json.JsonObject
@@ -22,7 +24,7 @@ class RoomClient(
      * see https://api.ricoh/docs/ricoh-cloud-api-reference/live-streaming/#MakeTicket
      */
     fun createTicket(channelID: String): Ticket {
-        val mimeType = MediaType.parse("application/json")
+        val mimeType = "application/json".toMediaType()
         val reqBody = RequestBody.create(mimeType, """{"direction":"up"}""")
         val req = Request.Builder()
                 .url("https://sfu.api.ricoh/v1/rooms/$channelID/tickets")
@@ -32,10 +34,10 @@ class RoomClient(
 
         val res = client.newCall(req).execute()
         if (!res.isSuccessful) {
-            throw Error("failed to create ticket : ${res.code()} ${res.body()}")
+            throw Error("failed to create ticket : ${res.code} ${res.body}")
         }
 
-        val resBody = Json.createReader(res.body()!!.byteStream()).readObject()
+        val resBody = Json.createReader(res.body!!.byteStream()).readObject()
         return Ticket.valueOf(resBody)
     }
 }

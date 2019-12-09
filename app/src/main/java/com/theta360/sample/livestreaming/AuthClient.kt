@@ -31,10 +31,10 @@ class AuthClient {
 
         val res = client.newCall(req).execute()
         if (!res.isSuccessful) {
-            throw Error("failed to create access token : ${res.code()} ${res.body()}")
+            throw Error("failed to create access token : ${res.code} ${res.body}")
         }
 
-        val resBody = Json.createReader(res.body()!!.byteStream()).readObject()
+        val resBody = Json.createReader(res.body!!.byteStream()).readObject()
         return resBody.getString("access_token")
     }
 }

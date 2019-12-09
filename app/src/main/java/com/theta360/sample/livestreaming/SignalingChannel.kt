@@ -117,18 +117,18 @@ class SignalingChannel(
     }
 
     private inner class WebSocketListener : okhttp3.WebSocketListener() {
-        override fun onOpen(ws: WebSocket?, res: Response?) {
+        override fun onOpen(ws: WebSocket, res: Response) {
             Log.d(TAG, "WebSocketListener.onOpen($ws, $res)")
             websocket = ws
             listener?.onOpen()
         }
 
-        override fun onFailure(ws: WebSocket?, t: Throwable?, res: Response?) {
+        override fun onFailure(ws: WebSocket, t: Throwable, res: Response?) {
             Log.d(TAG, "WebSocketListener.onFailure($ws, $t, $res)")
             websocket = null
         }
 
-        override fun onMessage(ws: WebSocket?, text: String?) {
+        override fun onMessage(ws: WebSocket, text: String) {
             Log.d(TAG, "WebSocketListener.onMessage($ws, $text)")
 
             val json = Json.createReader(StringReader(text)).readObject()
@@ -153,15 +153,15 @@ class SignalingChannel(
             }
         }
 
-        override fun onMessage(ws: WebSocket?, bytes: ByteString?) {
+        override fun onMessage(ws: WebSocket, bytes: ByteString) {
             Log.d(TAG, "WebSocketListener.onMessage($ws, $bytes)")
         }
 
-        override fun onClosing(ws: WebSocket?, code: Int, reason: String?) {
+        override fun onClosing(ws: WebSocket, code: Int, reason: String) {
             Log.d(TAG, "WebSocketListener.onClosing($ws, $code, $reason)")
         }
 
-        override fun onClosed(ws: WebSocket?, code: Int, reason: String?) {
+        override fun onClosed(ws: WebSocket, code: Int, reason: String) {
             Log.d(TAG, "WebSocketListener.onClosing($ws, $code, $reason)")
             listener?.onClosed(code, reason)
         }

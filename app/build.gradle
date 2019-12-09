@@ -62,7 +62,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.squareup.okhttp3:okhttp:3.12.1'
     compileOnly 'javax.json:javax.json-api:1.0'   // v1.1 or higher does not work on Android
     implementation 'org.glassfish:javax.json:1.0' // v1.1 or higher does not work on Android
 
