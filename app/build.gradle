@@ -78,12 +78,14 @@ dependencies {
     if (findProject(':sora-android-sdk') != null) {
         // module is included
         api project(':sora-android-sdk')
+        implementation 'com.squareup.okhttp3:okhttp:4.2.2'
     } else {
         // external dependency
         api("com.github.shiguredo:sora-android-sdk:develop-SNAPSHOT") {
             transitive = true
         }
     }
+    implementation 'org.conscrypt:conscrypt-android:2.2.1'
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
