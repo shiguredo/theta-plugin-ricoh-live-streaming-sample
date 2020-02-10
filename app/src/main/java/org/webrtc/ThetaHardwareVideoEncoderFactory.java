@@ -17,9 +17,7 @@ import static org.webrtc.MediaCodecUtils.QCOM_PREFIX;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.os.Build;
-
-import org.jetbrains.annotations.Nullable;
-
+import android.support.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,12 +38,10 @@ public class ThetaHardwareVideoEncoderFactory implements VideoEncoderFactory {
   private static final List<String> H264_HW_EXCEPTION_MODELS =
       Arrays.asList("SAMSUNG-SGH-I337", "Nexus 7", "Nexus 4");
 
-  @Nullable
-  private final EglBase14.Context sharedContext;
+  @Nullable private final EglBase14.Context sharedContext;
   private final boolean enableIntelVp8Encoder;
   private final boolean enableH264HighProfile;
-  @Nullable
-  private final Predicate<MediaCodecInfo> codecAllowedPredicate;
+  @Nullable private final Predicate<MediaCodecInfo> codecAllowedPredicate;
 
   /**
    * Creates a HardwareVideoEncoderFactory that supports surface texture encoding.
@@ -62,7 +58,7 @@ public class ThetaHardwareVideoEncoderFactory implements VideoEncoderFactory {
   }
 
   /**
-   * Creates a HardwareVideoEncoderFactory that supports surface texture encoding.
+   * Creates a ThetaHardwareVideoEncoderFactory that supports surface texture encoding.
    *
    * @param sharedContext The textures generated will be accessible from this context. May be null,
    *                      this disables texture support.

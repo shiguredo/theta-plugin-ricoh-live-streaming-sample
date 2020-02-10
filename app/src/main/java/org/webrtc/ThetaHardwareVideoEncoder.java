@@ -11,27 +11,20 @@
 package org.webrtc;
 
 import android.annotation.TargetApi;
-import android.graphics.Matrix;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.opengl.GLES20;
 import android.os.Bundle;
-
-import android.util.Log;
+import android.support.annotation.Nullable;
 import android.view.Surface;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
-
-import org.jetbrains.annotations.Nullable;
 import org.webrtc.ThreadUtils.ThreadChecker;
-
-import javax.microedition.khronos.egl.EGL10;
 
 /**
  * Android hardware video encoder.
@@ -43,14 +36,9 @@ import javax.microedition.khronos.egl.EGL10;
 class ThetaHardwareVideoEncoder implements VideoEncoder {
   private static final String TAG = "ThetaHardwareVideoEncoder";
 
-  private final boolean verboseEncodeLog = false;
-  private final boolean verboseDeliverLog = false;
-
   // Bitrate modes - should be in sync with OMX_VIDEO_CONTROLRATETYPE defined
   // in OMX_Video.h
-  private static final int VIDEO_ControlRateConstantBitRate = 2;
-  private static final int VIDEO_ControlRateConstantQuality = 0;
-  private static final int VIDEO_ControlRateVariableBitRate = 1;
+  private static final int VIDEO_ControlRateConstant = 2;
   // Key associated with the bitrate control mode value (above). Not present as a MediaFormat
   // constant until API level 21.
   private static final String KEY_BITRATE_MODE = "bitrate-mode";
@@ -66,6 +54,52 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
   private static final int MEDIA_CODEC_RELEASE_TIMEOUT_MS = 5000;
   private static final int DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US = 100000;
 
+  /**
+   * Keeps track of the number of output buffers that have been passed down the pipeline and not yet
+   * released. We need to wait for this to go down to zero before operations invalidating the output
+   * buffers, i.e., stop() and getOutputBuffers().
+   */
+  private static class BusyCount {
+    private final Object countLock = new Object();
+    private int count;
+
+    public void increment() {
+      synchronized (countLock) {
+        count++;
+      }
+    }
+
+    // This method may be called on an arbitrary thread.
+    public void decrement() {
+      synchronized (countLock) {
+        count--;
+        if (count == 0) {
+          countLock.notifyAll();
+        }
+      }
+    }
+
+    // The increment and waitForZero methods are called on the same thread (deliverEncodedImage,
+    // running on the output thread). Hence, after waitForZero returns, the count will stay zero
+    // until the same thread calls increment.
+    public void waitForZero() {
+      boolean wasInterrupted = false;
+      synchronized (countLock) {
+        while (count > 0) {
+          try {
+            countLock.wait();
+          } catch (InterruptedException e) {
+            Logging.e(TAG, "Interrupted while waiting on busy count", e);
+            wasInterrupted = true;
+          }
+        }
+      }
+
+      if (wasInterrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
   // --- Initialized on construction.
   private final MediaCodecWrapperFactory mediaCodecWrapperFactory;
   private final String codecName;
@@ -91,18 +125,15 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
   private final ThreadChecker encodeThreadChecker = new ThreadChecker();
   private final ThreadChecker outputThreadChecker = new ThreadChecker();
+  private final BusyCount outputBuffersBusyCount = new BusyCount();
 
   // --- Set on initialize and immutable until release.
   private Callback callback;
   private boolean automaticResizeOn;
 
   // --- Valid and immutable while an encoding session is running.
-  @Nullable private MediaCodecWrapper codecWrapper;
-
-  // --- Valid and immutable while an encoding session is running.
-  @Nullable private MediaCodec codec;
-  private int outputBuffersSize = 0;
-
+  @Nullable private MediaCodecWrapper codec;
+  @Nullable private ByteBuffer[] outputBuffers;
   // Thread that delivers encoded frames to the user callback.
   @Nullable private Thread outputThread;
 
@@ -184,41 +215,10 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     adjustedBitrate = bitrateAdjuster.getAdjustedBitrateBps();
 
     Logging.d(TAG,
-        "initEncode: " + codecName + " " + width + " x " + height + ". @ " + settings.startBitrate
+        "initEncode: " + width + " x " + height + ". @ " + settings.startBitrate
             + "kbps. Fps: " + settings.maxFramerate + " Use surface mode: " + useSurfaceMode);
     return initEncodeInternal();
   }
-
-  public static final int[] CONFIG_RECORDABLE_PIXEL_RGB_BUFFER = {
-          EGL10.EGL_RED_SIZE, 8,
-          EGL10.EGL_GREEN_SIZE, 8,
-          EGL10.EGL_BLUE_SIZE, 8,
-          EGL10.EGL_RENDERABLE_TYPE, EglBase.EGL_OPENGL_ES2_BIT,
-          EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
-          EglBase.EGL_RECORDABLE_ANDROID, 1,
-          EGL10.EGL_NONE
-  };
-
-  public static final int[] CONFIG_RECORDABLE_RGBA_BUFFER = {
-          EGL10.EGL_RED_SIZE, 8,
-          EGL10.EGL_GREEN_SIZE, 8,
-          EGL10.EGL_BLUE_SIZE, 8,
-          EGL10.EGL_ALPHA_SIZE, 8,
-          EGL10.EGL_RENDERABLE_TYPE, EglBase.EGL_OPENGL_ES2_BIT,
-          EglBase.EGL_RECORDABLE_ANDROID, 1,
-          EGL10.EGL_NONE
-  };
-
-  public static final int[] CONFIG_RECORDABLE_PIXEL_RGBA_BUFFER = {
-          EGL10.EGL_RED_SIZE, 8,
-          EGL10.EGL_GREEN_SIZE, 8,
-          EGL10.EGL_BLUE_SIZE, 8,
-          EGL10.EGL_ALPHA_SIZE, 8,
-          EGL10.EGL_RENDERABLE_TYPE, EglBase.EGL_OPENGL_ES2_BIT,
-          EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
-          EglBase.EGL_RECORDABLE_ANDROID, 1,
-          EGL10.EGL_NONE
-  };
 
   private VideoCodecStatus initEncodeInternal() {
     encodeThreadChecker.checkIsOnValidThread();
@@ -226,7 +226,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     lastKeyFrameNs = -1;
 
     try {
-      codec = MediaCodec.createByCodecName(codecName);
+      codec = mediaCodecWrapperFactory.createByCodecName(codecName);
     } catch (IOException | IllegalArgumentException e) {
       Logging.e(TAG, "Cannot create media encoder " + codecName);
       return VideoCodecStatus.FALLBACK_SOFTWARE;
@@ -235,31 +235,11 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     final int colorFormat = useSurfaceMode ? surfaceColorFormat : yuvColorFormat;
     try {
       MediaFormat format = MediaFormat.createVideoFormat(codecType.mimeType(), width, height);
-
       format.setInteger(MediaFormat.KEY_BIT_RATE, adjustedBitrate);
-      // format.setInteger(MediaFormat.KEY_BIT_RATE, 10000000);
-
-      format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstantBitRate);
-      // format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstantQuality);
-      // format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateVariableBitRate);
-
+      format.setInteger(KEY_BITRATE_MODE, VIDEO_ControlRateConstant);
       format.setInteger(MediaFormat.KEY_COLOR_FORMAT, colorFormat);
-      // This does not work: E/ACodec: [OMX.qcom.video.encoder.avc] does not support color format 19
-      // format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-      //         MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
-      // This does not work: E/ACodec: [OMX.qcom.video.encoder.avc] does not support color format 2134292616
-      // format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-      //         MediaCodecInfo.CodecCapabilities.COLOR_FormatRGBFlexible);
-
-      // bitrateAdjuster says framerate is 60, too high, yeah?
-      // format.setInteger(MediaFormat.KEY_FRAME_RATE, bitrateAdjuster.getCodecConfigFramerate());
-      // format.setFloat(MediaFormat.KEY_FRAME_RATE, 29.97f);
-      format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-
+      format.setInteger(MediaFormat.KEY_FRAME_RATE, bitrateAdjuster.getCodecConfigFramerate());
       format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, keyFrameIntervalSec);
-      Log.d(TAG, "format: keyframeintevalsec=" + keyFrameIntervalSec );
-      // format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 90);
-
       if (codecType == VideoCodecType.H264) {
         String profileLevelId = params.get(VideoCodecInfo.H264_FMTP_PROFILE_LEVEL_ID);
         if (profileLevelId == null) {
@@ -277,20 +257,18 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
         }
       }
       Logging.d(TAG, "Format: " + format);
-
       codec.configure(
           format, null /* surface */, null /* crypto */, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
       if (useSurfaceMode) {
         textureEglBase = EglBase.createEgl14(sharedContext, EglBase.CONFIG_RECORDABLE);
-        // textureEglBase = new EglBase14(sharedContext, CONFIG_RECORDABLE_PIXEL_RGBA_BUFFER);
-        // textureEglBase = new EglBase14(sharedContext, CONFIG_RECORDABLE_RGBA_BUFFER);
         textureInputSurface = codec.createInputSurface();
         textureEglBase.createSurface(textureInputSurface);
         textureEglBase.makeCurrent();
       }
 
       codec.start();
+      outputBuffers = codec.getOutputBuffers();
     } catch (IllegalStateException e) {
       Logging.e(TAG, "initEncodeInternal failed", e);
       release();
@@ -340,6 +318,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     outputBuilders.clear();
 
     codec = null;
+    outputBuffers = null;
     outputThread = null;
 
     // Allow changing thread after release.
@@ -356,13 +335,13 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
     }
 
     final VideoFrame.Buffer videoFrameBuffer = videoFrame.getBuffer();
+    Logging.d(TAG, "frame buffer=" + videoFrameBuffer.toString());
     final boolean isTextureBuffer = videoFrameBuffer instanceof VideoFrame.TextureBuffer;
 
     // If input resolution changed, restart the codec with the new resolution.
     final int frameWidth = videoFrame.getBuffer().getWidth();
     final int frameHeight = videoFrame.getBuffer().getHeight();
     final boolean shouldUseSurfaceMode = canUseSurface() && isTextureBuffer;
-
     if (frameWidth != width || frameHeight != height || shouldUseSurfaceMode != useSurfaceMode) {
       VideoCodecStatus status = resetCodec(frameWidth, frameHeight, shouldUseSurfaceMode);
       if (status != VideoCodecStatus.OK) {
@@ -416,11 +395,6 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
   private VideoCodecStatus encodeTextureBuffer(VideoFrame videoFrame) {
     encodeThreadChecker.checkIsOnValidThread();
-    long start = 0;
-    long mid = 0;
-    if (verboseEncodeLog) {
-      start = System.currentTimeMillis();
-    }
     try {
       // TODO(perkj): glClear() shouldn't be necessary since every pixel is covered anyway,
       // but it's a workaround for bug webrtc:5147.
@@ -429,18 +403,10 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
       VideoFrame derotatedFrame =
           new VideoFrame(videoFrame.getBuffer(), 0 /* rotation */, videoFrame.getTimestampNs());
       videoFrameDrawer.drawFrame(derotatedFrame, textureDrawer, null /* additionalRenderMatrix */);
-      if(verboseEncodeLog) {
-        mid = System.currentTimeMillis();
-      }
       textureEglBase.swapBuffers(videoFrame.getTimestampNs());
     } catch (RuntimeException e) {
       Logging.e(TAG, "encodeTexture failed", e);
       return VideoCodecStatus.ERROR;
-    }
-    if(verboseEncodeLog) {
-      long finished = System.currentTimeMillis();
-      Logging.d(TAG, String.format("encodeTextureBuffer (%s): start -> drawFrame [%2d] -> swapBuffers -> end [%2d]",
-              Thread.currentThread().getName(), mid - start, finished - mid));
     }
     return VideoCodecStatus.OK;
   }
@@ -520,9 +486,6 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
 
   private VideoCodecStatus resetCodec(int newWidth, int newHeight, boolean newUseSurfaceMode) {
     encodeThreadChecker.checkIsOnValidThread();
-    Logging.d(TAG, "resetCodec: " + newWidth + "x" + newHeight +
-            ", newUseSurfaceMode=" + newUseSurfaceMode);
-
     VideoCodecStatus status = release();
     if (status != VideoCodecStatus.OK) {
       return status;
@@ -570,47 +533,23 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
   // Visible for testing.
   protected void deliverEncodedImage() {
     outputThreadChecker.checkIsOnValidThread();
-    long start = 0;
-    long bufferInfo = 0;
-    long dequeued = 0;
-    long beforeOnEncodedFrame = 0;
-    long afterOnEncodedFrame = 0;
-
-    if (verboseDeliverLog) {
-      start = System.currentTimeMillis();
-    }
     try {
       MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-      if(verboseDeliverLog) {
-        bufferInfo = System.currentTimeMillis();
-      }
       int index = codec.dequeueOutputBuffer(info, DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US);
-      if (verboseDeliverLog) {
-        dequeued = System.currentTimeMillis();
-      }
       if (index < 0) {
-        if (index == MediaCodec.INFO_TRY_AGAIN_LATER) {
-          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (INFO_TRY_AGAIN_LATER)");
-        } else if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (INFO_OUTPUT_FORMAT_CHANGED)");
-        } else if (index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (INFO_OUTPUT_BUFFERS_CHANGED)");
-        } else {
-          Logging.d(TAG, "deliverEncodedImage: negative index=" + index + " (SHOULD NEVER HAPPEN)");
+        if (index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+          outputBuffersBusyCount.waitForZero();
+          outputBuffers = codec.getOutputBuffers();
         }
         return;
       }
-      if(outputBuffersSize == 0) {
-        // outputBuffersSize = codec.getOutputBuffers().length;
-        outputBuffersSize = 4; // hard coded
-      }
-      // Logging.d(TAG, "codecOutputBuffers index/length=" + index + "/" + outputBuffersSize);
-      ByteBuffer codecOutputBuffer = codec.getOutputBuffer(index);
+
+      ByteBuffer codecOutputBuffer = outputBuffers[index];
       codecOutputBuffer.position(info.offset);
       codecOutputBuffer.limit(info.offset + info.size);
 
       if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-        if(verboseDeliverLog) Logging.d(TAG, "Config frame generated. Offset: " + info.offset + ". Size: " + info.size);
+        Logging.d(TAG, "Config frame generated. Offset: " + info.offset + ". Size: " + info.size);
         configBuffer = ByteBuffer.allocateDirect(info.size);
         configBuffer.put(codecOutputBuffer);
       } else {
@@ -643,24 +582,27 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
             ? EncodedImage.FrameType.VideoFrameKey
             : EncodedImage.FrameType.VideoFrameDelta;
 
+        outputBuffersBusyCount.increment();
         EncodedImage.Builder builder = outputBuilders.poll();
-        builder.setBuffer(frameBuffer).setFrameType(frameType);
+        EncodedImage encodedImage = builder
+                                        .setBuffer(frameBuffer,
+                                            () -> {
+                                              // This callback should not throw any exceptions since
+                                              // it may be called on an arbitrary thread.
+                                              // Check bug webrtc:11230 for more details.
+                                              try {
+                                                codec.releaseOutputBuffer(index, false);
+                                              } catch (Exception e) {
+                                                Logging.e(TAG, "releaseOutputBuffer failed", e);
+                                              }
+                                              outputBuffersBusyCount.decrement();
+                                            })
+                                        .setFrameType(frameType)
+                                        .createEncodedImage();
         // TODO(mellem):  Set codec-specific info.
-        if(verboseDeliverLog) {
-          beforeOnEncodedFrame = System.currentTimeMillis();
-        }
-        callback.onEncodedFrame(builder.createEncodedImage(), new CodecSpecificInfo());
-        if(verboseDeliverLog) {
-          afterOnEncodedFrame = System.currentTimeMillis();
-        }
-      }
-      codec.releaseOutputBuffer(index, false);
-      if(verboseDeliverLog) {
-        long finish = System.currentTimeMillis();
-        Logging.d(TAG, String.format("deliverEncodedImage: start -> bufferInfo [%2d] -> dequeued [%2d] -> " +
-                "beforeOnEncodeFrame [%2d] -> afterOnEncodedFrame [%2d] -> finish [%2d]",
-                bufferInfo - start, dequeued - bufferInfo, beforeOnEncodedFrame - dequeued,
-                afterOnEncodedFrame - beforeOnEncodedFrame, finish - afterOnEncodedFrame));
+        callback.onEncodedFrame(encodedImage, new CodecSpecificInfo());
+        // Note that the callback may have retained the image.
+        encodedImage.release();
       }
     } catch (IllegalStateException e) {
       Logging.e(TAG, "deliverOutput failed", e);
@@ -670,6 +612,7 @@ class ThetaHardwareVideoEncoder implements VideoEncoder {
   private void releaseCodecOnOutputThread() {
     outputThreadChecker.checkIsOnValidThread();
     Logging.d(TAG, "Releasing MediaCodec on output thread");
+    outputBuffersBusyCount.waitForZero();
     try {
       codec.stop();
     } catch (Exception e) {
