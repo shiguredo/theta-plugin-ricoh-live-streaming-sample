@@ -41,6 +41,7 @@ class SoraMainActivity : Activity() {
     private val bitRate = 30000
     private val codec = SoraVideoOption.Codec.H264
     private val simulcast = true
+    private val captureToTexture = false
 
     private val getStatsIntervalMSec = 5000L
     private val statsCollector = VideoUpstreamLatencyStatsCollector()
@@ -221,7 +222,7 @@ class SoraMainActivity : Activity() {
         val cameraName = deviceNames[0]
         capturer = ThetaCamera1Capturer(shootingMode, cameraName,
                 /* CameraEventsHandler */ null,
-                /*captureToTexture*/ true,
+                /*captureToTexture*/ captureToTexture,
                 maintainsResolution)
 
         val option = SoraMediaOption().apply {
