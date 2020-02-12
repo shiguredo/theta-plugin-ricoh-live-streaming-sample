@@ -18,6 +18,8 @@ import jp.shiguredo.sora.sdk.util.SoraLogger
 import org.webrtc.*
 import android.content.IntentFilter
 import jp.shiguredo.sora.sdk.channel.option.PeerConnectionOption
+import jp.shiguredo.sora.sdk.video.SimulcastVideoEncoderFactory
+import java.lang.IllegalArgumentException
 
 class SoraMainActivity : Activity() {
     companion object {
@@ -36,8 +38,9 @@ class SoraMainActivity : Activity() {
     private val maintainsResolution = true
 
     // signaling parameters for video
-    private val bitRate = 15000
+    private val bitRate = 30000
     private val codec = SoraVideoOption.Codec.H264
+    private val simulcast = true
 
     private val getStatsIntervalMSec = 5000L
     private val statsCollector = VideoUpstreamLatencyStatsCollector()
@@ -48,7 +51,7 @@ class SoraMainActivity : Activity() {
 
     private var channel: SoraMediaChannel? = null
 
-    private var autoPublish = true
+    private var autoPublish = false
     private val publishingStateLock = Any()
     private var publishing = false
     private val keyReceiverCallback : KeyReceiver.Callback = object : KeyReceiver.Callback {
@@ -76,7 +79,7 @@ class SoraMainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         SoraLogger.enabled = true
-        SoraLogger.libjingle_enabled = false
+        SoraLogger.libjingle_enabled = true
 
         setContentView(R.layout.activity_main)
         localView = findViewById(R.id.local_view)
@@ -132,6 +135,51 @@ class SoraMainActivity : Activity() {
             // nop
         }
 
+        override fun onSenderEncodings(mediaChannel: SoraMediaChannel, encodings: List<RtpParameters.Encoding>) {
+            SoraLogger.d(TAG, "[video_channel] @onSenderEncodings: encodings=${encodings}")
+            encodings.forEach { encoding ->
+                when (encoding.rid) {
+                    "low" -> {
+                        encoding.scaleResolutionDownBy = 1.0
+                        encoding.maxFramerate = 30
+                        encoding.maxBitrateBps =2_340_000
+                    }
+                    "middle" -> {
+                        encoding.scaleResolutionDownBy = 2.0
+                        encoding.maxFramerate = 0
+                        encoding.maxBitrateBps =8_000_000
+                        // encoding.active = false
+                    }
+                    "high" -> {
+                        encoding.scaleResolutionDownBy = 1.0
+                        encoding.maxFramerate = 0
+                        encoding.maxBitrateBps =10_000_000
+                        // encoding.active = false
+                    }
+                    else ->
+                        throw IllegalArgumentException("invalid rid=${encoding.rid}")
+                }
+            }
+//            encodings.forEach { encoding ->
+//                encoding.scaleResolutionDownBy = 1.0
+//                when (encoding.rid) {
+//                    "low" -> {
+//                        encoding.maxFramerate = 1
+//                        encoding.maxBitrateBps =10_000_000
+//                    }
+//                    "middle" -> {
+//                        encoding.maxFramerate = 30
+//                        encoding.maxBitrateBps =15_000_000
+//                    }
+//                    "high" -> {
+//                        encoding.active = false
+//                    }
+//                    else ->
+//                        throw IllegalArgumentException("invalid rid=${encoding.rid}")
+//                }
+//            }
+        }
+
         override fun onAddLocalStream(mediaChannel: SoraMediaChannel, ms: MediaStream) {
             Log.d(TAG, "channelListenr.onAddLocalStream")
             runOnUiThread {
@@ -172,16 +220,10 @@ class SoraMainActivity : Activity() {
         }
         val cameraName = deviceNames[0]
         capturer = ThetaCamera1Capturer(shootingMode, cameraName,
-               /* CameraEventsHandler */ null,
-               /*captureToTexture*/ true,
+                /* CameraEventsHandler */ null,
+                /*captureToTexture*/ true,
                 maintainsResolution)
 
-        // capturer = ThetaCapturer(shootingMode, maintainsResolution)
-
-        val thetaVideoEncoderFactory = ThetaHardwareVideoEncoderFactory(
-                eglBase!!.eglBaseContext,
-                true /* enableIntelVp8Encoder */,
-                false /* enableH264HighProfile */)
         val option = SoraMediaOption().apply {
             // enableAudioUpstream()
             // audioCodec = SoraAudioOption.Codec.OPUS
@@ -190,7 +232,17 @@ class SoraMainActivity : Activity() {
             videoCodec = codec
             videoBitrate = bitRate
             enableCpuOveruseDetection = false
-            videoEncoderFactory = thetaVideoEncoderFactory
+            if (simulcast) {
+                enableSimulcast()
+                val simulcastVideoEncoderFactory = SimulcastVideoEncoderFactory(eglBase!!.eglBaseContext)
+                videoEncoderFactory = simulcastVideoEncoderFactory
+            } else {
+                val thetaVideoEncoderFactory = ThetaHardwareVideoEncoderFactory(
+                        eglBase!!.eglBaseContext,
+                        true /* enableIntelVp8Encoder */,
+                        false /* enableH264HighProfile */)
+                videoEncoderFactory = thetaVideoEncoderFactory
+            }
         }
 
         val peerConnectionOption = PeerConnectionOption().apply {
