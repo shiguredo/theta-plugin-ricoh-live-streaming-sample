@@ -138,47 +138,51 @@ class SoraMainActivity : Activity() {
 
         override fun onSenderEncodings(mediaChannel: SoraMediaChannel, encodings: List<RtpParameters.Encoding>) {
             SoraLogger.d(TAG, "[video_channel] @onSenderEncodings: encodings=${encodings}")
-            encodings.forEach { encoding ->
-                when (encoding.rid) {
-                    "low" -> {
-                        encoding.scaleResolutionDownBy = 1.0
-                        encoding.maxFramerate = 30
-                        encoding.maxBitrateBps =2_340_000
-                    }
-                    "middle" -> {
-                        encoding.scaleResolutionDownBy = 2.0
-                        encoding.maxFramerate = 0
-                        encoding.maxBitrateBps =8_000_000
-                        // encoding.active = false
-                    }
-                    "high" -> {
-                        encoding.scaleResolutionDownBy = 1.0
-                        encoding.maxFramerate = 0
-                        encoding.maxBitrateBps =10_000_000
-                        // encoding.active = false
-                    }
-                    else ->
-                        throw IllegalArgumentException("invalid rid=${encoding.rid}")
-                }
-            }
 //            encodings.forEach { encoding ->
-//                encoding.scaleResolutionDownBy = 1.0
 //                when (encoding.rid) {
 //                    "low" -> {
-//                        encoding.maxFramerate = 1
-//                        encoding.maxBitrateBps =10_000_000
+//                        encoding.scaleResolutionDownBy = 1.0
+//                        encoding.maxFramerate = 30
+//                        encoding.maxBitrateBps =2_340_000
 //                    }
 //                    "middle" -> {
-//                        encoding.maxFramerate = 30
-//                        encoding.maxBitrateBps =15_000_000
+//                        encoding.scaleResolutionDownBy = 2.0
+//                        encoding.maxFramerate = 0
+//                        encoding.maxBitrateBps =8_000_000
+//                        // encoding.active = false
 //                    }
 //                    "high" -> {
-//                        encoding.active = false
+//                        encoding.scaleResolutionDownBy = 1.0
+//                        encoding.maxFramerate = 0
+//                        encoding.maxBitrateBps =10_000_000
+//                        // encoding.active = false
 //                    }
 //                    else ->
 //                        throw IllegalArgumentException("invalid rid=${encoding.rid}")
 //                }
 //            }
+            encodings.forEach { encoding ->
+                encoding.scaleResolutionDownBy = 1.0
+                when (encoding.rid) {
+                    "low" -> {
+                        // 1 FPS にするとビットレートが上がらず画質が落ちる。
+                        // libwebrtc(BWE) や org.webrtc.HardwareVideoEncoder にはこの値を渡し、
+                        // 1 FPS に落とすロジックはフレームドロップ部分で処理する。
+                        encoding.maxFramerate = 10 // **FAKE**
+                        encoding.maxBitrateBps =10_000_000
+                    }
+                    "middle" -> {
+                        encoding.maxFramerate = 30
+                        encoding.maxBitrateBps =15_000_000
+                    }
+                    "high" -> {
+                        encoding.maxFramerate = 0
+                        encoding.active = false
+                    }
+                    else ->
+                        throw IllegalArgumentException("invalid rid=${encoding.rid}")
+                }
+            }
         }
 
         override fun onAddLocalStream(mediaChannel: SoraMediaChannel, ms: MediaStream) {
