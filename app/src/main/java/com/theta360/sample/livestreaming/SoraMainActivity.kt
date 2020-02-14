@@ -144,7 +144,7 @@ class SoraMainActivity : Activity() {
                 // libwebrtc(BWE) や org.webrtc.HardwareVideoEncoder には嘘の値を渡し、
                 // 1 FPS に落とすロジックはフレームドロップ部分で処理する。
                 val actualMaxFramerate = 1
-                val lowBitrateBps = 3_000_000 + actualMaxFramerate * 1_000
+                val lowBitrateBps = 5_000_000 + actualMaxFramerate * 1_000
                 when (encoding.rid) {
                     "low" -> {
                         encoding.maxFramerate  = 5 // **FAKE**
@@ -153,8 +153,8 @@ class SoraMainActivity : Activity() {
                     }
                     "middle" -> {
                         encoding.maxFramerate  = 30
-                        encoding.maxBitrateBps = 15_000_000
-                        encoding.minBitrateBps = 10_000_000
+                        encoding.maxBitrateBps = 25_000_000
+                        encoding.minBitrateBps = 15_000_000
                     }
                     "high" -> {
                         encoding.maxFramerate = 0
